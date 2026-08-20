@@ -95,7 +95,7 @@ internal sealed class StructHeap<T> : StructHeap, IComponentStash<T>
     
     private static void AddOrUpdateIndex(in T source, in T target, in Entity targetEntity, StructHeap<T> targetHeap, long updateIndexTypes)
     {
-        if (((1 << StructInfo<T>.Index) & updateIndexTypes) == 0) {
+        if (((1L << StructInfo<T>.Index) & updateIndexTypes) == 0) {
             StoreIndex.AddIndex(targetEntity.store, targetEntity.Id, source);
         } else {
             targetHeap.componentStash = target;

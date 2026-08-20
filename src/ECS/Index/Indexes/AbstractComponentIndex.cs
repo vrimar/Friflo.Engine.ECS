@@ -24,7 +24,7 @@ public abstract class AbstractComponentIndex
     internal  readonly  EntityStore     store;
     internal  readonly  ComponentType   componentType;
     internal  readonly  int             structIndex;
-    internal  readonly  int             indexBit;
+    internal  readonly  long            indexBit;
     internal            bool            modified;
     #endregion
     
@@ -45,7 +45,7 @@ public abstract class AbstractComponentIndex
         this.componentType  = componentType;
         structIndex         = componentType.StructIndex;
         var types           = new ComponentTypes(componentType);
-        indexBit            = (int)types.bitSet.l0;
+        indexBit            = types.bitSet.l0;
     }
 }
 

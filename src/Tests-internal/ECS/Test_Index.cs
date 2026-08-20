@@ -118,8 +118,8 @@ public static class Test_Index
         var indexedIntType  = ComponentTypes.Get<IndexedInt>();
         var attackType      = ComponentTypes.Get<AttackComponent>();
         var node  = new EntityNode {
-            isOwner     = (int)indexedIntType.bitSet.l0,
-            isLinked    = (int)attackType.bitSet.l0,
+            isOwner     = indexedIntType.bitSet.l0,
+            isLinked    = attackType.bitSet.l0,
         };
         AreEqual("Components: [IndexedInt]",        node.IsOwner.ToString());
         AreEqual("Components: [AttackComponent]",   node.IsLinked.ToString());

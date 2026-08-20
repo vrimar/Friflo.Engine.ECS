@@ -40,7 +40,7 @@ private const string Json =
         var entity1 = store.GetEntityById(1);
         AreEqual(1002, entity1.GetComponent<LinkComponent>().entity.Id);
         
-        var attackBit = 1 << StructInfo<LinkComponent>.Index;
+        var attackBit = 1L << StructInfo<LinkComponent>.Index;
         AreEqual(attackBit, store.nodes[1].isOwner);
         AreEqual(attackBit, store.nodes[1002].isLinked);
         

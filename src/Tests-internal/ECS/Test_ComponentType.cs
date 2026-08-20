@@ -5,6 +5,8 @@ using System.Reflection;
 using Friflo.Engine.ECS;
 using NUnit.Framework;
 using Tests.ECS;
+using Tests.ECS.Index;
+using Tests.ECS.Relations;
 using static NUnit.Framework.Assert;
 
 // ReSharper disable RedundantTypeDeclarationBody
@@ -31,6 +33,32 @@ public static class Test_ComponentType
         AreEqual(expect, e!.Message);
     }
     
+    /// <summary> cover <see cref="EntitySchema.CheckOwnerMaskCapacity"/> </summary>
+    [Test]
+    public static void Test_ComponentSchema_OwnerMaskCapacity()
+    {
+        var withinLimit = new List<ComponentType> {
+            new ComponentType<IndexedInt>("within", EntitySchema.MaxOwnerStructIndex, typeof(int), typeof(int))
+        };
+        EntitySchema.CheckOwnerMaskCapacity(withinLimit);
+
+        var plainComponentPastLimit = new List<ComponentType> {
+            new ComponentType<Position>("plain", EntitySchema.MaxOwnerStructIndex + 1, null, null)
+        };
+        EntitySchema.CheckOwnerMaskCapacity(plainComponentPastLimit);
+
+        var exceeding = new List<ComponentType> {
+            new ComponentType<IndexedInt>   ("indexed",  EntitySchema.MaxOwnerStructIndex + 1, typeof(int), typeof(int)),
+            new RelationType <AttackRelation>("relation", EntitySchema.MaxOwnerStructIndex + 2, typeof(int), typeof(Entity)),
+        };
+        var e = Throws<InvalidOperationException>(() => EntitySchema.CheckOwnerMaskCapacity(exceeding));
+        var expect =
+            "number of indexed component and relation types exceed MaxOwnerStructIndex: 63. " +
+            "These types get no owner bit in EntityNode, so their rows would outlive deleted entities: " +
+            "IndexedInt@64, AttackRelation@65";
+        AreEqual(expect, e!.Message);
+    }
+
     /*
     /// <summary> cover <see cref="SchemaUtils.CreateSchemaType"/> </summary>
     [Test]
