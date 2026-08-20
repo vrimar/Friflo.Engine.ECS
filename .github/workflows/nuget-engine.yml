@@ -3,7 +3,7 @@ name: CD-Engine
 on:
   push:
     tags:
-    - 'engine-v*'
+    - 'fuse-v*'
   
 env:
   PACKAGE_DIRECTORY: ${{ github.workspace }}/output
@@ -27,7 +27,7 @@ jobs:
       run: |
         TAG=${{ github.ref_name }}
         echo TAG: ${TAG}
-        echo "VERSION=${TAG#engine-v}" >> $GITHUB_ENV     # remove prefix 'engine-v'
+        echo "VERSION=${TAG#fuse-v}" >> $GITHUB_ENV       # remove prefix 'fuse-v'
 
     - name: Set FILE_VER from VERSION
       run: |
@@ -55,7 +55,7 @@ jobs:
     - name: Push
       working-directory: ./
       run: |
-        dotnet nuget push ${{ env.PACKAGE_DIRECTORY }}/Friflo.Engine.ECS.Boost.${VERSION}.nupkg       --source https://api.nuget.org/v3/index.json -k ${{ secrets.NUGET_AUTH_TOKEN }}
-        dotnet nuget push ${{ env.PACKAGE_DIRECTORY }}/Friflo.Engine.ECS.${VERSION}.nupkg             --source https://api.nuget.org/v3/index.json -k ${{ secrets.NUGET_AUTH_TOKEN }}
+        dotnet nuget push ${{ env.PACKAGE_DIRECTORY }}/CoFuse.Engine.ECS.Boost.${VERSION}.nupkg  --source https://api.nuget.org/v3/index.json -k ${{ secrets.NUGET_AUTH_TOKEN }}
+        dotnet nuget push ${{ env.PACKAGE_DIRECTORY }}/CoFuse.Engine.ECS.${VERSION}.nupkg        --source https://api.nuget.org/v3/index.json -k ${{ secrets.NUGET_AUTH_TOKEN }}
 
     
