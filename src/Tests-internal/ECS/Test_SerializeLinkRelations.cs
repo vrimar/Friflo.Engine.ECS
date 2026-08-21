@@ -62,8 +62,8 @@ private const string JsonMissingLinkRelation =
 
         entity1.DeleteEntity();
         AreEqual(0, store.nodes[1].isOwner);
-        // AreEqual(0, store.nodes[1002].isLinked);
-         
+        AreEqual(0, store.nodes[1002].isLinked);
+
         incomingLinks = entity2.GetIncomingLinks<AttackRelation>();
         AreEqual(0, incomingLinks.Count);
     }

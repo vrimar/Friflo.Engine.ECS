@@ -248,6 +248,7 @@ internal abstract class AbstractEntityRelations
     /// remove all entity relations
     internal virtual void RemoveEntityRelations (int id)
     {
+        version++;
         positionMap.TryGetValue(id, out var positions);
         while (positions.count > 0) {
             var lastIndex   = positions.count - 1;

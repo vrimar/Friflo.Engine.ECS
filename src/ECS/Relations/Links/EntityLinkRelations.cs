@@ -105,19 +105,10 @@ internal class EntityLinkRelations<TRelation> : GenericEntityRelations<TRelation
     {
         var positionsSpan   = positions.GetSpan(idHeap, store);
         var components      = ((StructHeap<TRelation>)heap).components;
-        var linkMap         = linkEntityMap;
         foreach (var position in positionsSpan)
         {
-            var targetId        = components[position].GetRelationKey().Id;
-            var sourceIds       = linkMap[targetId];
-            var sourceIdSpan    = sourceIds.GetSpan(linkIdsHeap, store);
-            var idPosition      = sourceIdSpan.IndexOf(id);
-            sourceIds.RemoveAt(idPosition, linkIdsHeap);
-            if (sourceIds.count == 0) {
-                linkMap.Remove(targetId);
-            } else {
-                linkMap[targetId] = sourceIds;
-            }
+            var targetId = components[position].GetRelationKey().Id;
+            LinkRelationUtils.RemoveComponentValue(id, targetId, this);
         }
     }
     #endregion

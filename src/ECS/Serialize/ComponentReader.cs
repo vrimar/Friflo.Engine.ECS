@@ -328,7 +328,12 @@ internal sealed class ComponentReader
                 case JsonEvent.ObjectEnd:
                     return null;
                 case JsonEvent.ArrayStart:
-                    return ReadRawRelations(entity);
+                    var error = ReadRawRelations(entity);
+                    if (error != null) {
+                        return error;
+                    }
+                    ev = parser.NextEvent();
+                    break;
                 default:
                     return $"'components' member must be object or array. was {ev}. id: {entity.Id}, component: '{parser.key}'";
             }
@@ -339,6 +344,7 @@ internal sealed class ComponentReader
     {
         var rawKey          = ToRawKey(parser.key);
         var startRelation   = relationCount;
+        var arrayStart      = parser.Position;
         var ev = parser.NextEvent();
         while (true) {
             switch (ev) {
@@ -351,21 +357,36 @@ internal sealed class ComponentReader
                     relations[relationCount++] = new RawRelation(start, parser.Position);
                     ev = parser.NextEvent();
                     if (ev == JsonEvent.ArrayEnd) {
-                        if (componentCount == components.Length) {
-                            ArrayUtils.Resize(ref components, 2 * componentCount);
-                        }
-                        components[componentCount++] = new RawComponent(RawComponentType.Array, rawKey, startRelation, relationCount);
-                        return null;
+                        return AddRawRelations(entity, rawKey, startRelation, arrayStart);
                     }
                     break;
                 case JsonEvent.ArrayEnd:
-                    return null;
+                    return AddRawRelations(entity, rawKey, startRelation, arrayStart);
                 default:
                     return $"'components' member expect array of objects. was {ev}. id: {entity.Id}, component: '{parser.key}'";
             }
         }
     }
-    
+
+    private string AddRawRelations(Entity entity, in RawKey rawKey, int startRelation, int arrayStart)
+    {
+        if (componentCount == components.Length) {
+            ArrayUtils.Resize(ref components, 2 * componentCount);
+        }
+        if (!(rawKey.schemaType is ComponentType type) || type.RelationType == null) {
+            // storing a resolvable key as unresolved would let the writer emit that key twice
+            if (rawKey.schemaType != unresolvedType) {
+                return $"'components' member is an array but '{rawKey.key}' is not a relation type. id: {entity.Id}";
+            }
+            // an unknown key would throw in ReadRelation() - keep its raw array instead
+            var unresolvedKey = new RawKey(rawKey.key, unresolvedType);
+            components[componentCount++] = new RawComponent(RawComponentType.Object, unresolvedKey, arrayStart, parser.Position);
+            return null;
+        }
+        components[componentCount++] = new RawComponent(RawComponentType.Array, rawKey, startRelation, relationCount);
+        return null;
+    }
+
     private RawKey ToRawKey(in Bytes keyBytes)
     {
         var keyHash = new BytesHash(keyBytes);
