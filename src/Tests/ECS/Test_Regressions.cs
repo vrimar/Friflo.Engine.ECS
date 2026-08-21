@@ -493,6 +493,17 @@ public static class Test_Regressions
         liveStore.CreateEntity().AddComponent(new Index.IndexedName { name = null });
         AreEqual(1, liveStore.Query().HasValue<Index.IndexedName,string>(null).Entities.Count);
     }
+
+    [Test]
+    public static void DataEntity_DebugJSON_WithRelation_ReturnsJson()
+    {
+        var store  = new EntityStore();
+        var entity = store.CreateEntity(1);
+        entity.AddRelation(new InventoryItem { type = InventoryItemType.Axe, amount = 5 });
+
+        var data = new EntityConverter().EntityToDataEntity(entity, null, true);
+        IsTrue(data.DebugJSON.TrimStart().StartsWith("{"), data.DebugJSON);
+    }
 }
 
 }

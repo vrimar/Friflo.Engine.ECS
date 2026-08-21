@@ -87,6 +87,7 @@ public sealed class DataEntitySerializer
             switch (ev)
             {
                 case JsonEvent.ObjectStart:
+                case JsonEvent.ArrayStart:  // a relation is written as array of objects
                     json.AppendBytes(KeyStart);
                     json.AppendBytes(parser.key);
                     json.AppendBytes(KeyEnd);
