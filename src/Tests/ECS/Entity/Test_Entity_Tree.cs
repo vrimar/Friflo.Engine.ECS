@@ -89,8 +89,8 @@ public static class Test_Entity_Tree
         AreEqual(1,         rootNode.ChildCount);
         AreEqual(1,         rootNode.GetChildIds(store).Length);
         AreEqual("ChildCount: 1", rootNode.ToString());
-    //  AreEqual("id: 1  \"root\"  [EntityName]  ChildCount: 1  flags: Created",  root.ToString()); TREE_NODE
-        AreEqual("id: 1  \"root\"  [EntityName, TreeNode]",  root.ToString());
+    //  AreEqual("id: 1  [EntityName]  ChildCount: 1  flags: Created",  root.ToString()); TREE_NODE
+        AreEqual("id: 1  [TreeNode, EntityName]",  root.ToString());
         AreEqual(1,         childEntities.Count);
         IsTrue(child ==     childEntities[0]);
         
@@ -142,7 +142,7 @@ public static class Test_Entity_Tree
             var rootNode = root.GetComponent<TreeNode>();
             AreEqual(1,                                 rootNode.ChildCount);
             AreEqual(1,                                 rootNode.GetChildIds(store).Length);
-            AreEqual("id: 1  \"root\"  [EntityName, TreeNode]",  root.ToString());
+            AreEqual("id: 1  [TreeNode, EntityName]",  root.ToString());
             IsTrue(child4 ==                            childNodes[0]);
             events.RemoveHandler();
         }
@@ -572,7 +572,7 @@ public static class Test_Entity_Tree
         });
         // From now: access to components and tree nodes throw a NullReferenceException
         Throws<NullReferenceException> (() => {
-            _ = child.Name; // access component
+            _ = child.GetComponent<EntityName>(); // access component
         });
         Throws<NullReferenceException> (() => {
             _ = child.Parent; // access tree node

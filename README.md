@@ -217,13 +217,16 @@ The hello world examples demonstrates the creation of a world, some entities wit
 and their movement using a simple `ForEachEntity()` call.  
 
 ```csharp
+public struct Position : IComponent { public Vector3 value; }
 public struct Velocity : IComponent { public Vector3 value; }
 
 public static void HelloWorld()
 {
     var world = new EntityStore();
     for (int n = 0; n < 10; n++) {
-        world.CreateEntity(new Position(n, 0, 0), new Velocity{ value = new Vector3(0, n, 0)});
+        world.CreateEntity(
+            new Position{ value = new Vector3(n, 0, 0) },
+            new Velocity{ value = new Vector3(0, n, 0) });
     }
     var query = world.Query<Position, Velocity>();
     query.ForEachEntity((ref Position position, ref Velocity velocity, Entity entity) => {
@@ -278,7 +281,7 @@ public static void HelloSystem()
 {
     var world = new EntityStore();
     for (int n = 0; n < 10; n++) {
-        world.CreateEntity(new Position(n, 0, 0), new Velocity(), new Scale3());
+        world.CreateEntity(new Position{ value = new Vector3(n, 0, 0) }, new Velocity());
     }
     var root = new SystemRoot(world) {
         new MoveSystem(),
@@ -305,6 +308,7 @@ to iterate the query result.
 
 ```csharp
 struct Pulsating : ITag { }
+public struct Scale3 : IComponent { public Vector3 value; }
 
 class PulseSystem : QuerySystem<Scale3>
 {

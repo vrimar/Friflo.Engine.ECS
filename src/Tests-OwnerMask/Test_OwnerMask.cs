@@ -61,7 +61,7 @@ public static class Test_OwnerMask
         var stranded = new List<string>();
         foreach (var type in SlotTypes()) {
             if (!SlotProbes.TryGet(type.Type, out var probe)) {
-                continue; // engine-owned type such as UniqueEntity
+                continue;
             }
             var store  = new EntityStore();
             var entity = store.CreateEntity();

@@ -10,11 +10,11 @@
 |   **General** properties                                                                                                          |
 | *Existence: optional*                     | *Existence: always present*               |                                           |
 | Entity.Id                                 | GameObject.GetInstanceID()                |                                           |
-| Entity.Name                               | GameObject.name                           |                                           |
-| Entity.Transform                          | GameObject.transform                      |                                           |
-| Entity.Position                           | GameObject.transform.position             |                                           |
-| Entity.Rotation                           | GameObject.transform.rotation             |                                           |
-| Entity.Scale3                             | GameObject.transform.localScale           |                                           |
+| *user-defined component*                  | GameObject.name                           |                                           |
+| *user-defined component*                  | GameObject.transform                      |                                           |
+| *user-defined component*                  | GameObject.transform.position             |                                           |
+| *user-defined component*                  | GameObject.transform.rotation             |                                           |
+| *user-defined component*                  | GameObject.transform.localScale           |                                           |
 | Entity.Store                              | GameObject.scene                          |                                           |
 |                                                                                                                                   |
 |   **Component** methods                                                                                                           |

@@ -13,6 +13,17 @@ public sealed class ExplorerItemTree
 #region internal properties
     public              ExplorerItem                    RootItem    => rootItem;
     public   override   string                          ToString()  => debugName;
+
+    /// <summary>
+    /// Resolves the <see cref="ExplorerItem.Name"/> of an entity.
+    /// Returning <c>null</c> - or leaving this unset - falls back to the default entity name.
+    /// </summary>
+    public              Func<Entity, string>            GetEntityName   { get; set; }
+
+    /// <summary>
+    /// Applies a name assigned to <see cref="ExplorerItem.Name"/>. Assignments are ignored while unset.
+    /// </summary>
+    public              Action<Entity, string>          SetEntityName   { get; set; }
     #endregion
     
 #region internal fields

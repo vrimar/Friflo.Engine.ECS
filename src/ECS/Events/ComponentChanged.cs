@@ -80,9 +80,9 @@ public readonly struct  ComponentChanged
     /// <code>
     ///     var type = args.Type;
     ///     switch (true) {
-    ///         case true when type == typeof(EntityName):
+    ///         case true when type == typeof(MyComponent1):
     ///             break;
-    ///         case true when type == typeof(Position):
+    ///         case true when type == typeof(MyComponent2):
     ///             break;
     ///     }
     /// </code> 

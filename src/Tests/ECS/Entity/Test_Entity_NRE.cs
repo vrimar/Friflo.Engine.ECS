@@ -122,42 +122,42 @@ public static class Test_Entity_NRE
         
         // --- components
         var nre = Throws<NullReferenceException>(() => {
-            _ = entity.Name;
+            _ = entity.GetComponent<EntityName>();
         });
         AreEqual(expect, nre!.Message);
         
         nre = Throws<NullReferenceException>(() => {
-            _ = entity.Position;
+            _ = entity.GetComponent<Position>();
         });
         AreEqual(expect, nre!.Message);
         
         nre = Throws<NullReferenceException>(() => {
-            _ = entity.Rotation;
+            _ = entity.GetComponent<Rotation>();
         });
         AreEqual(expect, nre!.Message);
         
         nre = Throws<NullReferenceException>(() => {
-            _ = entity.Scale3;
+            _ = entity.GetComponent<Scale3>();
         });
         AreEqual(expect, nre!.Message);
         
         nre = Throws<NullReferenceException>(() => {
-            _ = entity.HasName;
+            _ = entity.HasComponent<EntityName>();
         });
         AreEqual(expect, nre!.Message);
         
         nre = Throws<NullReferenceException>(() => {
-            _ = entity.HasPosition;
+            _ = entity.HasComponent<Position>();
         });
         AreEqual(expect, nre!.Message);
         
         nre = Throws<NullReferenceException>(() => {
-            _ = entity.HasRotation;
+            _ = entity.HasComponent<Rotation>();
         });
         AreEqual(expect, nre!.Message);
         
         nre = Throws<NullReferenceException>(() => {
-            _ = entity.HasScale3;
+            _ = entity.HasComponent<Scale3>();
         });
         AreEqual(expect, nre!.Message);
 

@@ -26,7 +26,7 @@ public abstract class QuerySystemBase : BaseSystem
     /// <remarks>
     /// Additional tag filters can be added in the constructor of a class extending a <c>QuerySystem</c>.
     /// <code>
-    /// class MySystem : QuerySystem&lt;Scale3>
+    /// class MySystem : QuerySystem&lt;MyComponent>
     /// {
     ///     public MySystem() => Filter.AnyTags(Tags.Get&lt;MyTag>()); 
     ///     protected override void OnUpdate() { ... }

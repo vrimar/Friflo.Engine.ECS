@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using Friflo.Engine.ECS;
+using Tests.ECS;
 using NUnit.Framework;
 
 // ReSharper disable UnusedParameter.Local

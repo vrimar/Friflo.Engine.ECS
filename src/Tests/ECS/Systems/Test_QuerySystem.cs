@@ -45,14 +45,14 @@ namespace Tests.ECS.Systems
             
             var tick = new UpdateTick(42, 0);
             root.Update(tick);
-            AreEqual(new Position(2,2,3),   entity.Position);
+            AreEqual(new Position(2,2,3),   entity.GetComponent<Position>());
             AreEqual(1,                     group.beginCalled);
             AreEqual(1,                     group.endCalled);
             
             query1.Enabled = false;
             group.Enabled  = false;
             root.Update(tick);
-            AreEqual(new Position(2,2,3),   entity.Position);
+            AreEqual(new Position(2,2,3),   entity.GetComponent<Position>());
             AreEqual(1,                     group.beginCalled);
             AreEqual(1,                     group.endCalled);
         }

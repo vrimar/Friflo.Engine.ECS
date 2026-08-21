@@ -172,8 +172,7 @@ public static class TreeUtils
                 continue;
             }
             missingPids.Add(oldPid);
-            var missingChild    = store.CreateEntity();
-            missingChild.AddComponent(new EntityName($"missing entity - pid: {oldPid}"));
+            var missingChild                = store.CreateEntity();
             var missingChildPid             = missingChild.Pid;
             children[n]                     = missingChildPid;
             oldToNewPid[oldPid]             = missingChildPid;

@@ -6,6 +6,7 @@ using System.Text;
 using Friflo.Engine.ECS;
 using Friflo.Engine.ECS.Systems;
 using NUnit.Framework;
+using Tests.ECS;
 using Tests.ECS.Systems;
 using Tests.Utils;
 using static NUnit.Framework.Assert;

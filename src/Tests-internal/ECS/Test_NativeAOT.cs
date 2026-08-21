@@ -29,7 +29,7 @@ public static class Test_NativeAOT
         
         var engine  = dependants[0];
         AreEqual("CoFuse.Engine.ECS",   engine.AssemblyName);
-        AreEqual(9,                     engine.Types.Length);
+        AreEqual(3,                     engine.Types.Length);
         
         var tests = dependants[1];
         AreEqual("Tests",   tests.AssemblyName);

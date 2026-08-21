@@ -122,15 +122,15 @@ public static class Test_EntityGenericAdd
             
             entity3.Add(new Position(1,1,1), new Scale3(1,1,1), new EntityName("old"), tag);
             entity3.Add(new Position(2,2,2), new Scale3(2,2,2), new EntityName("new"), tag);
-            AreEqual("id: 3  \"new\"  [EntityName, Position, Scale3, #TestTag]", entity3.ToString());
+            AreEqual("id: 3  [EntityName, Position, Scale3, #TestTag]", entity3.ToString());
             
             entity4.Add(new Position(1,1,1), new Scale3(1,1,1), new EntityName("old"), new MyComponent1 { a = 1 }, tag);
             entity4.Add(new Position(2,2,2), new Scale3(2,2,2), new EntityName("new"), new MyComponent1 { a = 2 }, tag);
-            AreEqual("id: 4  \"new\"  [EntityName, Position, Scale3, MyComponent1, #TestTag]", entity4.ToString());
+            AreEqual("id: 4  [EntityName, Position, Scale3, MyComponent1, #TestTag]", entity4.ToString());
             
             entity5.Add(new Position(1,1,1), new Scale3(1,1,1), new EntityName("old"), new MyComponent1 { a = 1 }, new MyComponent2 { b = 1 }, tag);
             entity5.Add(new Position(2,2,2), new Scale3(2,2,2), new EntityName("new"), new MyComponent1 { a = 2 }, new MyComponent2 { b = 2 }, tag);
-            AreEqual("id: 5  \"new\"  [EntityName, Position, Scale3, MyComponent1, MyComponent2, #TestTag]", entity5.ToString());
+            AreEqual("id: 5  [EntityName, Position, Scale3, MyComponent1, MyComponent2, #TestTag]", entity5.ToString());
             
             entity101.Add(new Position(1,1,1), tag);
             AreEqual("id: 101  [Position, #TestTag]", entity101.ToString());

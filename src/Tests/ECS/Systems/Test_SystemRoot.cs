@@ -24,7 +24,7 @@ namespace Tests.ECS.Systems
             var entity  = store.CreateEntity(new Position());
             var root    = new SystemRoot(store) { new TestMoveSystem() };
             root.Update(default);
-            AreEqual(new Position(1,0,0), entity.Position);
+            AreEqual(new Position(1,0,0), entity.GetComponent<Position>());
         }
         
         class TestMoveSystem : QuerySystem<Position>
@@ -139,7 +139,7 @@ TestSystem1                   + m       -1.000        0.000            0        
             var tick = new UpdateTick(42, 0);
             root.Update(tick);
             
-            AreEqual(new Scale3(4,5,6), entity.Scale3); // added by testSystem1
+            AreEqual(new Scale3(4,5,6), entity.GetComponent<Scale3>()); // added by testSystem1
             AreEqual(42, testSystem1.Tick.deltaTime);
             AreEqual(42, testGroup.Tick.deltaTime);
             AreEqual(42, root.Tick.deltaTime);

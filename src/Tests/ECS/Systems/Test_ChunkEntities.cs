@@ -21,7 +21,7 @@ public static class Test_ChunkEntities
         child.AddComponent(new Position(2, 0, 0));
         for (int n = 3; n <= 1000; n++) {
             child = child.Archetype.CreateEntity();
-            child.Position = new Position(n, 0, 0);
+            child.GetComponent<Position>() = new Position(n, 0, 0);
             root.AddChild(child);
         }
         
@@ -31,7 +31,7 @@ public static class Test_ChunkEntities
         {
             switch (chunkCount++) { 
                 case 0:
-                    Mem.AreEqual("Entity[1]    Archetype: [EntityName, Position, Rotation, Scale3, Transform, TreeNode, MyComponent1]  entities: 1",   entities.ToString());
+                    Mem.AreEqual("Entity[1]    Archetype: [TreeNode, EntityName, Position, Rotation, Scale3, Transform, MyComponent1]  entities: 1",   entities.ToString());
                     Mem.AreEqual(1,             entities.Length);
                     var e = Assert.Throws<IndexOutOfRangeException>(() => {
                         _ = entities.EntityAt(1);

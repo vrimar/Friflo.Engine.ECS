@@ -208,10 +208,10 @@ var expect =
         
         converter.EntityComponentsToJsonMembers(entity, members);
         AreEqual(5, members.Count);
-        AreEqual("\"name\":{\"value\":\"test\"}",               members[0].ToString());
-        AreEqual("\"pos\":{\"x\":0,\"y\":0,\"z\":0}",           members[1].ToString());
-        AreEqual("\"rot\":{\"x\":0,\"y\":0,\"z\":0,\"w\":0}",   members[2].ToString());
-        AreEqual("\"unknown\":{\"value\": 1}",                  members[3].ToString());
+        AreEqual("\"unknown\":{\"value\": 1}",                  members[0].ToString());
+        AreEqual("\"name\":{\"value\":\"test\"}",               members[1].ToString());
+        AreEqual("\"pos\":{\"x\":0,\"y\":0,\"z\":0}",           members[2].ToString());
+        AreEqual("\"rot\":{\"x\":0,\"y\":0,\"z\":0,\"w\":0}",   members[3].ToString());
         AreEqual("\"script1\":{\"val1\":42}",                   members[4].ToString());
         
         Throws<ArgumentNullException>(() => {

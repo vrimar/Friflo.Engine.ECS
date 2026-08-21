@@ -42,7 +42,7 @@ public static class Test_EntitySerializer
         AreEqual(11,                    entity.ChildIds[0]);
         
         AreEqual(3,                     entity.Components.Count);
-        AreEqual(new Position(1, 2, 3), entity.Position);
+        AreEqual(new Position(1, 2, 3), entity.GetComponent<Position>());
         
         var unresolved = entity.GetComponent<Unresolved>();
         AreEqual(1,                     unresolved.tags.Length);

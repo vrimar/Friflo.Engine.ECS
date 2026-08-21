@@ -3,6 +3,7 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using Friflo.Engine.ECS;
 using NUnit.Framework;
+using Tests.ECS;
 using Tests.Utils;
 
 namespace Internal.ECS {

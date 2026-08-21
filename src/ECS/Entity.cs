@@ -124,16 +124,6 @@ namespace Friflo.Engine.ECS;
 ///     <see cref="AddComponent{T}()"/>             <br/>
 ///     <see cref="RemoveComponent{T}()"/>          <br/>
 /// </item>
-/// <item>  <b>components</b> · common              <br/>
-///     <see cref="Name"/>                          <br/>
-///     <see cref="Position"/>                      <br/>
-///     <see cref="Rotation"/>                      <br/>
-///     <see cref="Scale3"/>                        <br/>
-///     <see cref="HasName"/>                       <br/>
-///     <see cref="HasPosition"/>                   <br/>
-///     <see cref="HasRotation"/>                   <br/>
-///     <see cref="HasScale3"/>                     <br/>
-/// </item>
 /// <item>  <b>scripts</b>              <br/>
 ///     <see cref="Scripts"/>           <br/>
 ///     <see cref="GetScript{T}"/>      <br/>
@@ -263,69 +253,6 @@ public readonly partial struct Entity : IEquatable<Entity>, IComparable<Entity>
         return new EntityData(Id);
     } }  
 
-    /// <summary>Returns the <see cref="ECS.EntityName"/> reference of an entity.</summary>
-    /// <exception cref="NullReferenceException"> if entity has no <see cref="EntityName"/></exception>
-    [Browse(Never)] public  ref EntityName      Name { get {
-        var node = store.nodes[Id];
-        if (node.IsAlive(Revision)) {
-            return ref node.archetype.std.name.components[node.compIndex];
-        }
-        throw EntityNullException();
-    } }
-    
-    /// <summary>Returns the <see cref="ECS.Position"/> reference of an entity.</summary>
-    /// <exception cref="NullReferenceException"> if entity has no <see cref="Position"/></exception>
-    [Browse(Never)] public  ref Position        Position { get {
-        var node = store.nodes[Id];
-        if (node.IsAlive(Revision)) {
-            return ref node.archetype.std.position.components[node.compIndex];
-        }
-        throw EntityNullException();
-    } }
-    
-    /// <summary>Returns the <see cref="ECS.Rotation"/> reference of an entity.</summary>
-    /// <exception cref="NullReferenceException"> if entity has no <see cref="Rotation"/></exception>
-    [Browse(Never)] public  ref Rotation        Rotation { get {
-        var node = store.nodes[Id];
-        if (node.IsAlive(Revision)) {
-            return ref node.archetype.std.rotation.components[node.compIndex];
-        }
-        throw EntityNullException();
-    } }
-    
-    /// <summary>Returns the <see cref="ECS.Scale3"/> reference of an entity.</summary>
-    /// <exception cref="NullReferenceException"> if entity has no <see cref="Scale3"/></exception>
-    [Browse(Never)] public  ref Scale3          Scale3 { get {
-        var node = store.nodes[Id];
-        if (node.IsAlive(Revision)) {
-            return ref node.archetype.std.scale3.components[node.compIndex];
-        }
-        throw EntityNullException();
-    } }
-    
-    /// <summary>Returns true if the entity has an <see cref="ECS.EntityName"/>.</summary>
-    [Browse(Never)] public  bool                HasName { get {
-        var type = GetArchetype() ?? throw EntityNullException();
-        return type.std.name != null;
-    } }
-    
-    /// <summary>Returns true if the entity has a <see cref="ECS.Position"/>.</summary>
-    [Browse(Never)] public  bool                HasPosition { get {
-        var type = GetArchetype() ?? throw EntityNullException();
-        return type.std.position != null;
-    } }
-    
-    /// <summary>Returns true if the entity has a <see cref="ECS.Rotation"/>.</summary>
-    [Browse(Never)] public  bool                HasRotation { get {
-        var type = GetArchetype() ?? throw EntityNullException();
-        return type.std.rotation != null;
-    } }
-    
-    /// <summary>Returns true if the entity has a <see cref="ECS.Scale3"/>.</summary>
-    [Browse(Never)] public  bool                HasScale3 { get {
-        var type = GetArchetype() ?? throw EntityNullException();
-        return type.std.scale3 != null;
-    } }
     #endregion
 
 
@@ -353,7 +280,6 @@ public readonly partial struct Entity : IEquatable<Entity>, IComparable<Entity>
     /// <code>
     ///     foreach (var child in entity.ChildEntities)
     /// </code>
-    /// To iterate all entities with child entities use <see cref="TreeNode"/> in a <c>Query()</c>.
     /// </remarks>
                     public  ChildEntities       ChildEntities   => new ChildEntities(this);
     
@@ -569,7 +495,6 @@ public readonly partial struct Entity : IEquatable<Entity>, IComparable<Entity>
     /// <remarks>
     /// Executes in O(1) in case the child has no parent.<br/>
     /// The subtree structure of the added entity remains unchanged.<br/>
-    /// To iterate all entities with child entities use <see cref="TreeNode"/> in a <c>Query()</c>.
     /// </remarks>
     /// <returns>
     /// The index within <see cref="ChildIds"/> the <paramref name="entity"/> is added.<br/>
@@ -586,7 +511,6 @@ public readonly partial struct Entity : IEquatable<Entity>, IComparable<Entity>
     /// Executes in O(1) in case the child has no paren and <paramref name="index"/> == <see cref="ChildCount"/>.<br/>
     /// Otherwise, O(N). N = <see cref="ChildCount"/> - <paramref name="index"/><br/>
     /// The subtree structure of the added entity remains unchanged.<br/>
-    /// To iterate all entities with child entities use <see cref="TreeNode"/> in a <c>Query()</c>.
     /// </remarks>
     public void InsertChild(int index, Entity entity) {
         var childStore  = entity.GetStore() ??  throw EntityStoreBase.EntityArgumentNullException(entity, nameof(entity));

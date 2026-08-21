@@ -44,7 +44,7 @@ public sealed class ExplorerItem :
     IList,
     IReadOnlyList<ExplorerItem>,
     INotifyCollectionChanged,
-    INotifyPropertyChanged      //  only required to notify EntityName changes to Avalonia > TreeDataGrid
+    INotifyPropertyChanged      //  only required to notify item changes to Avalonia > TreeDataGrid
 {
 #region internal properties
     public              int     Id              => entity.Id;
@@ -65,7 +65,7 @@ public sealed class ExplorerItem :
     internal readonly   Entity                              entity;                 // 16   - the corresponding entity
     internal readonly   ExplorerItemTree                    tree;                   //  8   - the ExplorerItemTree containing this ExplorerItem
     internal            NotifyCollectionChangedEventHandler collectionChanged;      //  8   - event handlers are called in case entity children are modified
-    public              PropertyChangedEventHandler         propertyChangedHandler; //  8   - used to notify EntityName changes to Avalonia > TreeDataGrid 
+    public              PropertyChangedEventHandler         propertyChangedHandler; //  8   - used to notify item changes to Avalonia > TreeDataGrid
     #endregion
 
 #region constructor
@@ -82,25 +82,13 @@ public sealed class ExplorerItem :
     }
     
     private string GetName() {
-        if (entity.HasName) {
-            return entity.Name.value;
-        }
-        return tree.defaultEntityName;
+        return tree.GetEntityName?.Invoke(entity) ?? tree.defaultEntityName;
     }
-    
-    private void SetName(string value)
-    {
-        entity.TryGetComponent<EntityName>(out var name);
-        if (name.value == value) {
-            return;
-        }
-        if (string.IsNullOrEmpty(value) || value == tree.defaultEntityName) {
-            entity.RemoveComponent<EntityName>();
-            return;
-        }
-        entity.AddComponent(new EntityName(value));
+
+    private void SetName(string value) {
+        tree.SetEntityName?.Invoke(entity, value);
     }
-    
+
     private void SetExpanded(bool value) {
         if (isExpanded == value) {
             return;

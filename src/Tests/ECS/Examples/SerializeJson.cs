@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using Friflo.Engine.ECS;
 using Friflo.Engine.ECS.Serialize;
+using Tests.ECS;
 using Friflo.Json.Fliox;
 // ReSharper disable ArrangeTypeMemberModifiers
 

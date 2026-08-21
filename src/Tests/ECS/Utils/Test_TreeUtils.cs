@@ -92,11 +92,11 @@ public static class Test_TreeUtils
         
         var clone2 =            root.ChildEntities  [indexes[0]];
         AreEqual(1,             clone2.ChildEntities.Count);
-        AreEqual("child-3",     clone2.ChildEntities[0].Name.value);
-        AreEqual("child-2",     clone2.Name.value);
+        AreEqual("child-3",     clone2.ChildEntities[0].GetComponent<EntityName>().value);
+        AreEqual("child-2",     clone2.GetComponent<EntityName>().value);
         
         var clone3 =            child2.ChildEntities[indexes[1]];
-        AreEqual("child-3",     clone3.Name.value);
+        AreEqual("child-3",     clone3.GetComponent<EntityName>().value);
         
         // --- Duplicate root
         entities        = new List<Entity>{ root };
@@ -289,17 +289,17 @@ public static class Test_TreeUtils
         var item2       = tree.GetItemById(2);
         var items = new [] { item2 };
         AreEqual(2,         root.ChildCount);
-        AreEqual("child-2", root.ChildEntities[0].Name.value);
+        AreEqual("child-2", root.ChildEntities[0].GetComponent<EntityName>().value);
      
         // remove child2
         TreeUtils.RemoveExplorerItems(items);
         AreEqual(1,         root.ChildCount);
-        AreEqual("child-3", root.ChildEntities[0].Name.value);
+        AreEqual("child-3", root.ChildEntities[0].GetComponent<EntityName>().value);
         
         // remove - already removed - child2 again
         TreeUtils.RemoveExplorerItems(items);
         AreEqual(1,         root.ChildCount);
-        AreEqual("child-3", root.ChildEntities[0].Name.value);
+        AreEqual("child-3", root.ChildEntities[0].GetComponent<EntityName>().value);
     }
     
     /// <summary> Cover <see cref="TreeUtils.RemoveExplorerItems"/> </summary>

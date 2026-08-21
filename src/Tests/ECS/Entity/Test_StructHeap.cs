@@ -25,12 +25,12 @@ public static class Test_StructHeap
             entities[n] = entity;
             Mem.AreSame(arch1,              entity.Archetype);
             Mem.AreEqual(n + 1,             arch1.Count);
-            Mem.IsTrue(new Position() == entity.Position); // Position is present & default
-            entity.Position.x = n;
+            Mem.IsTrue(new Position() == entity.GetComponent<Position>()); // Position is present & default
+            entity.GetComponent<Position>().x = n;
         }
         Mem.AreEqual(2048, arch1.Capacity);
         for (int n = 0; n < count; n++) {
-            Mem.AreEqual(n, entities[n].Position.x);
+            Mem.AreEqual(n, entities[n].GetComponent<Position>().x);
         }
     }
     
@@ -47,7 +47,7 @@ public static class Test_StructHeap
         {
             var entity = arch1.CreateEntity();
             entities[n] = entity;
-            entity.Position.x = n;
+            entity.GetComponent<Position>().x = n;
         }
         // --- delete the majority of entities
         const int remaining = 500;
@@ -57,7 +57,7 @@ public static class Test_StructHeap
         }
         Mem.AreEqual(1024, arch1.Capacity);
         for (int n = 0; n < remaining; n++) {
-            Mem.AreEqual(n, entities[n].Position.x);
+            Mem.AreEqual(n, entities[n].GetComponent<Position>().x);
         }
     }
     

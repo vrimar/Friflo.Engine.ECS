@@ -55,7 +55,7 @@ public static class Test_StoreSync
             var child       = store.GetEntityById(11);
             Test_ComponentReader.AssertRootEntity(root, 3);
             Test_ComponentReader.AssertChildEntity(child);
-            AreEqual("Components: [Position, Scale3, TreeNode]",    root.Archetype.ComponentTypes.ToString());
+            AreEqual("Components: [TreeNode, Position, Scale3]",    root.Archetype.ComponentTypes.ToString());
             AreEqual("Components: [Position, Scale3]",              child.Archetype.ComponentTypes.ToString());
             AreEqual(2,     store.Count);
         }
@@ -74,7 +74,7 @@ public static class Test_StoreSync
             var child       = store.GetEntityById(11);
             Test_ComponentReader.AssertRootEntity(root, 3);
             Test_ComponentReader.AssertChildEntity(child);
-            AreEqual("Components: [Position, Scale3, TreeNode]",    root.Archetype.ComponentTypes.ToString());
+            AreEqual("Components: [TreeNode, Position, Scale3]",    root.Archetype.ComponentTypes.ToString());
             AreEqual("Components: [Position, Scale3]",              child.Archetype.ComponentTypes.ToString());
             AreEqual(2,     store.Count);
         }
@@ -101,8 +101,8 @@ public static class Test_StoreSync
             AreEqual("entity: 10 - 'components[pos]' - Cannot assign bool to float. got: true path: 'x' at position: 9", errors[0]);
             
             var root = store.GetEntityById(10);
-            IsTrue(         root.HasPosition);
-            AreEqual("Components: [Position, TreeNode]",    root.Archetype.ComponentTypes.ToString());
+            IsTrue(         root.HasComponent<Position>());
+            AreEqual("Components: [TreeNode, Position]",    root.Archetype.ComponentTypes.ToString());
             AreEqual(1,     store.Count);
         }
     }

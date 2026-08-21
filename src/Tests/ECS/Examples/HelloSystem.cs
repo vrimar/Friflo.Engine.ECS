@@ -2,6 +2,7 @@
 using System.Numerics;
 using Friflo.Engine.ECS;
 using Friflo.Engine.ECS.Systems;
+using Tests.ECS;
 using NUnit.Framework;
 
 // ReSharper disable UnusedType.Local
@@ -91,35 +92,6 @@ class CustomQuerySystem : QuerySystem
 
 
 
-#region custom BaseSystem
-
-[Test]
-public static void CustomizeBaseSystem()
-{
-    var world = new EntityStore();
-    world.CreateEntity(new UniqueEntity("Camera"), new Position(0, 0, 0));
-    var root = new SystemRoot(world) {
-        new CameraSystem()
-    };
-    root.Update(default);
-}
-
-// Example of a system that does not require a Query.
-// E.g. find and access a UniqueEntity as shown below. 
-class CameraSystem : BaseSystem
-{
-    private Entity camera;
-    
-    protected override void OnAddStore(EntityStore store) {
-        camera = store.GetUniqueEntity("Camera");
-    }
-    
-    protected override void OnUpdateGroup() {
-        ref var position = ref camera.GetComponent<Position>();
-        // Update camera position based on user input
-    }
-}
-#endregion
 }
 
 }

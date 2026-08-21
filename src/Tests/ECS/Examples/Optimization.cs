@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Numerics;
 using Friflo.Engine.ECS;
+using Tests.ECS;
 using NUnit.Framework;
 using static Tests.Examples.General;
 

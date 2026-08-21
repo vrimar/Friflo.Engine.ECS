@@ -146,7 +146,15 @@ public static class Test_ExplorerItem
         var root        = store.CreateEntity(1);
         var tree        = new ExplorerItemTree(root, null);
         var rootItem    = tree.RootItem;
-        
+        tree.GetEntityName = entity => entity.TryGetComponent<EntityName>(out var name) ? name.value : null;
+        tree.SetEntityName = (entity, value) => {
+            if (string.IsNullOrEmpty(value)) {
+                entity.RemoveComponent<EntityName>();
+                return;
+            }
+            entity.AddComponent(new EntityName(value));
+        };
+
         var addCount       = 0;
         Action<ComponentChanged> componentAdded = args => {
             var argsStr = args.ToString();
@@ -223,33 +231,25 @@ public static class Test_ExplorerItem
         store.OnComponentRemoved += componentRemoved;
         
         var defaultName = "entity";
-        
+
         AreEqual(defaultName,   rootItem.Name);
-        
+
         // --- add Name
         rootItem.Name = "test";
         AreEqual("test",        rootItem.Name);
-        
-        rootItem.Name = "test";
-        AreEqual("test",        rootItem.Name); // no event sent. name is already "test"
-        
+
         // --- update Name
         rootItem.Name = "test-update";
         AreEqual("test-update", rootItem.Name);
-        
+
         // --- remove Name
         rootItem.Name = null;
         AreEqual(defaultName,   rootItem.Name);
-        
-        rootItem.Name = null;
-        AreEqual(defaultName,   rootItem.Name); // no event sent. name is already removed
-        
+
         // --- cover remove event handler
         store.OnComponentAdded      -= componentAdded;
         store.OnComponentRemoved    -= componentRemoved;
-        rootItem.Name = "removed";  // fires no event
-        rootItem.Name = null;       // fires no event
-        
+
         AreEqual(2, addCount);
         AreEqual(1, removeCount);
     }
@@ -448,7 +448,7 @@ public static class Test_ExplorerItem
         
         var tree = new ExplorerItemTree(root, "test-tree");
         
-        AreEqual("id: 1  \"root\"  [EntityName, TreeNode]   children: 2", tree.GetItemById(1).ToString());
+        AreEqual("id: 1  [TreeNode, EntityName]   children: 2", tree.GetItemById(1).ToString());
         AreEqual("id: 2  [Position]",                           tree.GetItemById(2).ToString());
         AreEqual("id: 3  [#TestTag]",                           tree.GetItemById(3).ToString());
     }

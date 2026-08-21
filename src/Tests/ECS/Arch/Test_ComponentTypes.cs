@@ -79,7 +79,7 @@ public static class Test_ComponentTypes
         var engine = schema.EngineDependants[0];
         AreEqual("CoFuse.Engine.ECS",   engine.AssemblyName);
         AreEqual("CoFuse.Engine.ECS",   engine.ToString());
-        AreEqual(9,                     engine.Types.Length);
+        AreEqual(3,                     engine.Types.Length);
         foreach (var type in engine.Types) {
             AreSame(engine.Assembly, type.Type.Assembly);
         }
@@ -185,7 +185,7 @@ public static class Test_ComponentTypes
         AreEqual(1, type1.ComponentTypes.Count);
         AreSame (type1, result);
         
-        result = store.FindArchetype(ComponentTypes.Get<UniqueEntity, Scale3>(), Tags.Get<TestTag2, TestTag3, TestTag5>());
+        result = store.FindArchetype(ComponentTypes.Get<Transform, Scale3>(), Tags.Get<TestTag2, TestTag3, TestTag5>());
         IsNull(result);
         
         var start   = Mem.GetAllocatedBytes();

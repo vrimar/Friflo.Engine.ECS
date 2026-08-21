@@ -146,7 +146,7 @@ public static class Test_Serializer
             
         var root        = store.GetEntityById(10);
         AreEqual(11,    root.ChildIds[0]);
-        IsTrue  (new Position(1,2,3) == root.Position);
+        IsTrue  (new Position(1,2,3) == root.GetComponent<Position>());
         AreEqual(2,     root.Tags.Count);
         IsTrue  (root.Tags.Has<TestTag>());
         IsTrue  (root.Tags.Has<TestTag3>());
@@ -156,7 +156,7 @@ public static class Test_Serializer
         AreEqual(0,     child.Components.Count);
         AreEqual(0,     child.Tags.Count);
             
-        AreEqual("Components: [Position, TreeNode]",    root.Archetype.ComponentTypes.ToString());
+        AreEqual("Components: [TreeNode, Position]",    root.Archetype.ComponentTypes.ToString());
         AreEqual("Components: []",                      child.Archetype.ComponentTypes.ToString());
     }
     
@@ -518,7 +518,7 @@ public static class Test_Serializer
         // MemoryStream.GetBuffer() is not available. stream data must be copied.  
         var readStream = new MemoryStream(Encoding.UTF8.GetBytes(json));
         serializer.ReadIntoStore(newStore, readStream);
-        AreEqual("test-name", newStore.GetEntityById(1).Name.value);
+        AreEqual("test-name", newStore.GetEntityById(1).GetComponent<EntityName>().value);
     }
 }
 

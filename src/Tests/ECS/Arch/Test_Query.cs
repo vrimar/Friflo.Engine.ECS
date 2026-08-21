@@ -368,7 +368,7 @@ public static class Test_Query
         }
         AssertNoAlloc(start);
         AreEqual(2,  chunkCount);
-        AreEqual(42, entity2.Rotation.x);
+        AreEqual(42, entity2.GetComponent<Rotation>().x);
         
         chunkCount = 0;
         foreach (var (_, rotation, _) in query.Chunks) {
@@ -379,7 +379,7 @@ public static class Test_Query
             }
         }
         AreEqual(2,  chunkCount);
-        AreEqual(99, entity2.Rotation.x);
+        AreEqual(99, entity2.GetComponent<Rotation>().x);
     }
     
     [Test]
