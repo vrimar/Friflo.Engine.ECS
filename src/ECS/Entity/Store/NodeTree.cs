@@ -2,6 +2,7 @@
 // See LICENSE file in the project root for full license information.
 
 using System;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using Friflo.Engine.ECS.Collections;
 using Friflo.Engine.ECS.Index;
@@ -479,7 +480,7 @@ public partial class EntityStore
         {
             for (; ++sequenceId < max;)
             {
-                if (localNodes[sequenceId].archetype != null) {
+                if (localNodes[sequenceId].archetype != null || IsDeletingId(sequenceId)) {
                     continue;
                 }
                 break;
@@ -507,7 +508,7 @@ public partial class EntityStore
         id      = ++intern.sequenceId;
         for (; id < max;)
         {
-            if (localNodes[id].archetype != null) {
+            if (localNodes[id].archetype != null || IsDeletingId(id)) {
                 id = ++intern.sequenceId;
                 continue;
             }
@@ -516,42 +517,88 @@ public partial class EntityStore
         return id;
     }
     
+    /// <summary> Ids inside <see cref="DeleteNode"/>. Their node is cleared but the id is not free yet. </summary>
+    private bool IsDeletingId(int id)
+    {
+        var ids = intern.deletingIds;
+        for (int n = intern.deletingCount - 1; n >= 0; n--) {
+            if (ids[n] == id) return true;
+        }
+        return false;
+    }
+
     /// <remarks> Set <see cref="EntityNode.archetype"/> = null. </remarks>
     internal void DeleteNode(Entity entity)
     {
         int id = entity.Id;
-        if (recycleIds) {
-            intern.recycleIds.Push(id);
+        var node = nodes[id];
+        if (node.archetype == null) {
+            return; // a handler of the delete event already deleted this entity
         }
         entityCount--;
-        ref var node = ref nodes[id];
-        if (node.isOwner != 0) {
-            RemoveEntityReferences(entity, node);
+        // Relation events below run user code. Clear the node first so a handler deleting this entity
+        // again is rejected - but archetype == null is also the free-slot predicate of NewId() and
+        // CheckEntityId(), so reserve the id for the whole delete.
+        nodes[id].archetype = null;
+        if (intern.deletingCount == intern.deletingIds.Length) {
+            ArrayUtils.Resize(ref intern.deletingIds, Math.Max(4, 2 * intern.deletingCount));
         }
-        if (node.isLinked != 0) {
-            RemoveLinksToEntity(entity);
+        intern.deletingIds[intern.deletingCount++] = id;
+        int parentId;
+        int childIndex;
+        try {
+            try {
+                if (node.isOwner != 0) {
+                    RemoveEntityReferences(entity, node);
+                }
+                if (node.isLinked != 0) {
+                    RemoveLinksToEntity(entity);
+                }
+                // ClearTreeFlags(nodes, id, NodeFlags.TreeNode); // --- mark its child nodes as floating
+                var childMap = extension.childMap;
+                var childIds = id < childMap.Length ? childMap[id] : default;
+                foreach (int childId in childIds.GetSpan(extension.childHeap, this)) {
+                    RemoveTreeParent(childId);
+                }
+                RemoveAllEntityEventHandlers(this, nodes[id], id);
+            }
+            finally {
+                // the id is recycled unconditionally below, so a throwing handler above must not skip
+                // the revision bump or leave the row and the side tables behind
+                ClearNode(id, node.archetype, out parentId, out childIndex);
+            }
+            if (HasParent(parentId)) {
+                OnChildNodeRemove(parentId, id, childIndex);
+            }
         }
-        // ClearTreeFlags(nodes, id, NodeFlags.TreeNode); // --- mark its child nodes as floating
-        foreach (int childId in entity.ChildIds) {
-            RemoveTreeParent(childId);
+        finally {
+            intern.deletingCount--;     // the id is only free once no handler can still observe it mid-delete
+            if (recycleIds) {
+                intern.recycleIds.Push(id);
+            }
         }
-        RemoveAllEntityEventHandlers(this, node, id);
-        int parentId = GetTreeParentId(id);
-        // --- clear node entry.
-        var revision    = node.revision;
-        node = default;
-        node.revision   = ++revision;        
-        extension.RemoveEntity(id);
+    }
 
-        // --- remove child from parent 
+    private void ClearNode(int id, Archetype archetype, out int parentId, out int childIndex)
+    {
+        var current      = nodes[id];   // re-read: handlers above may have grown nodes[] and moved this row
+        parentId         = GetTreeParentId(id);
+        ref var nodeRef  = ref nodes[id];
+        var revision     = nodeRef.revision;
+        nodeRef          = default;
+        nodeRef.revision = ++revision;
+        // Drop the entity row here rather than in the caller: compIndex is only accurate until the
+        // next handler runs, and OnChildNodeRemove is one.
+        Archetype.MoveLastComponentsTo(archetype, current.compIndex, true);
+        extension.RemoveEntity(id);
         if (!HasParent(parentId)) {
+            childIndex = -1;
             return;
         }
         RemoveTreeParent(id);
-        int curIndex = RemoveChildNode(parentId, id);
-        OnChildNodeRemove(parentId, id, curIndex);
+        childIndex = RemoveChildNode(parentId, id);
     }
-    
+
     private void RemoveEntityReferences(Entity entity, in EntityNode node)
     {
         var indexTypes          = new ComponentTypes();
@@ -578,19 +625,32 @@ public partial class EntityStore
     private void RemoveLinksToEntity(Entity target)
     {
         EntityExtensions.GetIncomingLinkTypes(target, out var indexTypes, out var relationTypes);
-        
+        // the node is cleared and the id recycled even if a handler throws - so must every back reference
+        ExceptionDispatchInfo error = null;
+
         // --- remove link components from entities having the passed entity id as target
         var indexMap = extension.indexMap;
         foreach (var componentType in indexTypes) {
             var entityIndex = (EntityIndex)indexMap[componentType.StructIndex];
-            entityIndex.RemoveLinksWithTarget(target.Id);
+            try {
+                entityIndex.RemoveLinksWithTarget(target.Id);
+            }
+            catch (Exception exception) {
+                error ??= ExceptionDispatchInfo.Capture(exception);
+            }
         }
         // --- remove link relations from entities having the passed entity id as target
         var relationsMap = extension.relationsMap;
         foreach (var componentType in relationTypes) {
             var relations = relationsMap[componentType.StructIndex];
-            relations.RemoveLinksWithTarget(target.Id);
+            try {
+                relations.RemoveLinksWithTarget(target.Id);
+            }
+            catch (Exception exception) {
+                error ??= ExceptionDispatchInfo.Capture(exception);
+            }
         }
+        error?.Throw();
     }
     
     /* private void SetTreeFlags(EntityNode[] nodes, int id, NodeFlags flag) {

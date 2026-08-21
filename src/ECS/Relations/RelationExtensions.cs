@@ -76,6 +76,24 @@ public static class RelationExtensions
     }
     
     /// <summary>
+    /// Removes all relations with the specified <typeparamref name="TRelation"/> type from an entity.<br/>
+    /// Executes in O(N) N: number of relations of the specific entity.
+    /// </summary>
+    /// <remarks>
+    /// Fires one <see cref="RelationChanged"/> event per removed relation, after the last one is removed.
+    /// The remaining events are skipped if a handler deletes the entity - the return value still counts
+    /// every removed relation.
+    /// </remarks>
+    /// <exception cref="NullReferenceException">If the entity is null.</exception>
+    /// <returns>the number of removed relations.</returns>
+    public static int ClearRelations<TRelation>(this Entity entity)
+        where TRelation : struct, IRelation
+    {
+        if (entity.IsNull) throw EntityStoreBase.EntityNullException(entity);
+        return AbstractEntityRelations.ClearRelations<TRelation>(entity.store, entity.Id);
+    }
+
+    /// <summary>
     /// Removes the specified link relation <paramref name="target"/> from an entity.<br/>
     /// Executes in O(N) N: number of link relations of the specified entity.
     /// </summary>

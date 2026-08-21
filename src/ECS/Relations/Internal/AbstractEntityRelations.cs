@@ -15,7 +15,7 @@ namespace Friflo.Engine.ECS.Relations;
 
 internal delegate AbstractEntityRelations CreateEntityRelations(ComponentType componentType, Archetype archetype, StructHeap heap);
 
-internal abstract class AbstractEntityRelations
+internal abstract class AbstractEntityRelations : IRelationKeyStash
 {
     internal            int                         version;
     internal            int                         Count       => archetype.Count;
@@ -190,19 +190,84 @@ internal abstract class AbstractEntityRelations
     internal static bool AddRelation<TRelation>(EntityStoreBase store, int id, in TRelation relation)
         where TRelation : struct, IRelation
     {
-        var relations = GetEntityRelations(store, StructInfo<TRelation>.Index);
-        relations.version++;
-        return relations.AddRelation(id, relation);
+        int structIndex = StructInfo<TRelation>.Index;
+        var relations   = GetEntityRelations(store, structIndex);
+        relations.StashPush();
+        try {
+            relations.version++;
+            var added   = relations.AddRelation(id, relation);
+            var action  = added ? RelationChangedAction.Add : RelationChangedAction.Update;
+            relations.SendRelationChanged(id, action, structIndex);
+            return added;
+        }
+        finally {
+            relations.StashPop();
+        }
     }
-        
+
+    internal static bool AddRelationSilent<TRelation>(EntityStoreBase store, int id, in TRelation relation)
+        where TRelation : struct, IRelation
+    {
+        var relations = GetEntityRelations(store, StructInfo<TRelation>.Index);
+        relations.StashPush();
+        try {
+            relations.version++;
+            return relations.AddRelation(id, relation);
+        }
+        finally {
+            relations.StashPop();
+        }
+    }
+
     internal static bool RemoveRelation<TRelation, TKey>(EntityStoreBase store, int id, TKey key)
         where TRelation : struct, IRelation<TKey>
     {
-        var relations = (GenericEntityRelations<TRelation,TKey>)GetEntityRelations(store, StructInfo<TRelation>.Index);
-        relations.version++;
-        return relations.RemoveRelation(id, key);
+        int structIndex = StructInfo<TRelation>.Index;
+        var relations   = (GenericEntityRelations<TRelation,TKey>)GetEntityRelations(store, structIndex);
+        relations.StashPush();
+        try {
+            relations.version++;
+            if (!relations.RemoveRelation(id, key)) {
+                return false;
+            }
+            relations.keyStash = key;
+            relations.SendRelationChanged(id, RelationChangedAction.Remove, structIndex);
+            return true;
+        }
+        finally {
+            relations.StashPop();
+        }
     }
-    
+
+    internal static int ClearRelations<TRelation>(EntityStoreBase store, int id)
+        where TRelation : struct, IRelation
+    {
+        int structIndex = StructInfo<TRelation>.Index;
+        var relations   = GetEntityRelations(store, structIndex);
+        relations.StashPush();
+        try {
+            return relations.ClearRelations(id, structIndex);
+        }
+        finally {
+            relations.StashPop();
+        }
+    }
+
+    internal abstract int ClearRelations(int id, int structIndex);
+
+    // one key stash per relation type: a nested mutation would clobber the key of the event in flight
+    internal abstract void StashPush();
+    internal abstract void StashPop();
+
+    protected void SendRelationChanged(int id, RelationChangedAction action, int structIndex)
+    {
+        var relationChanged = store.extension.relationChanged;
+        if (relationChanged == null) {
+            return;
+        }
+        relationChanged.Invoke(new RelationChanged(store, id, action, structIndex, this));
+    }
+
     protected int AddEntityRelation(int id, IdArray positions)
     {
         if (positions.count == 0) {

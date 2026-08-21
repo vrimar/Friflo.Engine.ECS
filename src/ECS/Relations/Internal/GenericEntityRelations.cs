@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Ullrich Praetz - https://github.com/friflo. All rights reserved.
 // See LICENSE file in the project root for full license information.
 
+using System;
 using System.Collections.Generic;
 using Friflo.Engine.ECS.Collections;
 
@@ -11,12 +12,36 @@ namespace Friflo.Engine.ECS.Relations;
 
 
 /// Contains a single <see cref="Archetype"/> with a single <see cref="StructHeap{T}"/><br/>
-internal class GenericEntityRelations<TRelation, TKey> : AbstractEntityRelations
+internal class GenericEntityRelations<TRelation, TKey> : AbstractEntityRelations, IRelationKeyStash<TKey>
     where TRelation : struct, IRelation<TKey>
 {
     /// Single <see cref="StructHeap"/> stored in the <see cref="AbstractEntityRelations.archetype"/>.
     internal  readonly   StructHeap<TRelation>  heapGeneric;
-    
+
+    internal             TKey                   keyStash;
+
+    private              TKey[]                 keyScratch = Array.Empty<TKey>();
+
+    private              TKey[]                 stashStack = new TKey[4];
+    private              int                    stashDepth;
+
+    public               ref TKey               GetKeyStash()       => ref keyStash;
+
+    internal override void StashPush()
+    {
+        if (stashDepth == stashStack.Length) {
+            ArrayUtils.Resize(ref stashStack, 2 * stashDepth);
+        }
+        stashStack[stashDepth++] = keyStash;
+    }
+
+    internal override void StashPop()
+    {
+        if (--stashDepth > 0) {
+            keyStash = stashStack[stashDepth];
+        }
+    }
+
     /// Instance created at <see cref="AbstractEntityRelations.GetEntityRelations"/>
     public GenericEntityRelations(ComponentType componentType, Archetype archetype, StructHeap heap)
         : base(componentType, archetype, heap)
@@ -86,6 +111,7 @@ internal class GenericEntityRelations<TRelation, TKey> : AbstractEntityRelations
     {
         var relationKey = RelationUtils<T, TKey>.GetRelationKey(relation);
     //  var relationKey = ((IRelation<TKey>)component).GetRelationKey(); // boxing version
+        keyStash        = relationKey;
         var added       = true;
         var position    = FindRelationPosition(id, relationKey, out var positions, out _);
         if (position >= 0) {
@@ -107,6 +133,49 @@ internal class GenericEntityRelations<TRelation, TKey> : AbstractEntityRelations
             return true;
         }
         return false;
+    }
+
+    internal override int ClearRelations(int id, int structIndex)
+    {
+        positionMap.TryGetValue(id, out var positions);
+        int count = positions.count;
+        if (count == 0) {
+            return 0;
+        }
+        if (store.extension.relationChanged == null) {
+            RemoveEntityRelations(id);
+            return count;
+        }
+        var keys = keyScratch;
+        if (keys.Length < count) {
+            keys = new TKey[count];
+        }
+        keyScratch = Array.Empty<TKey>(); // a handler below may re-enter with the same relation type
+        try {
+            var positionSpan    = positions.GetSpan(idHeap, store);
+            var components      = heapGeneric.components;
+            for (int n = 0; n < count; n++) {
+                keys[n] = components[positionSpan[n]].GetRelationKey();
+            }
+            var revision = store.nodes[id].revision;
+            RemoveEntityRelations(id);
+            var args = new RelationChanged(store, id, RelationChangedAction.Remove, structIndex, this);
+            for (int n = 0; n < count; n++) {
+                if (!store.nodes[id].IsAlive(revision)) {
+                    break;  // an earlier handler deleted the owner
+                }
+                var relationChanged = store.extension.relationChanged;
+                if (relationChanged == null) {
+                    break;  // an earlier handler unsubscribed the last one
+                }
+                keyStash = keys[n];
+                relationChanged.Invoke(args);
+            }
+        }
+        finally {
+            keyScratch = keys;
+        }
+        return count;
     }
     #endregion
 }

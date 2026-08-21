@@ -12,6 +12,16 @@ public struct AttackRelation : ILinkRelation
     public override string  ToString()          => target.Id.ToString();
 }
 
+/// A second <see cref="ILinkRelation"/> - needed to cover a teardown that spans more than one link type.
+[ComponentKey("guard-link")]
+public struct GuardRelation : ILinkRelation
+{
+    public          Entity  target;
+    public          Entity  GetRelationKey()    => target;
+
+    public override string  ToString()          => target.Id.ToString();
+}
+
 internal struct IntRelation : IRelation<int>
 {
     public          int     value;

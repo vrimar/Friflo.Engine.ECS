@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using Friflo.Json.Fliox;
 using Friflo.Engine.ECS;
@@ -109,6 +110,111 @@ public static class Test_Regressions
         converter.DataEntityToEntity(data, store, out var error);
 
         AreEqual("'components' member is an array but 'pos' is not a relation type. id: 1", error);
+    }
+
+    [Test]
+    public static void DeleteEntity_ThrowingRelationHandler_CompletesTeardown()
+    {
+        var store   = new EntityStore();
+        var parent  = store.CreateEntity();
+        var target  = store.CreateEntity();
+        var source  = store.CreateEntity();
+        parent.AddChild(target);
+        target.AddChild(store.CreateEntity());
+        source.AddRelation(new AttackRelation { target = target });
+
+        store.OnRelationChanged += _ => throw new InvalidOperationException("from handler");
+
+        var targetId = target.Id;
+        var count    = store.Count;
+        Throws<InvalidOperationException>(() => target.DeleteEntity());
+
+        AreEqual(count - 1,  store.Count);
+        AreEqual(0,          parent.ChildCount);
+        IsTrue  (target.IsNull);
+
+        var reused = store.CreateEntity();
+        AreEqual(targetId,   reused.Id);
+        AreEqual(0,          reused.ChildCount);
+        IsTrue  (target.IsNull);
+    }
+
+    [Test]
+    public static void DeleteEntity_ThrowingRelationHandler_ClearsEveryLinkRelationType()
+    {
+        var store   = new EntityStore();
+        var target  = store.CreateEntity();
+        var source1 = store.CreateEntity();
+        var source2 = store.CreateEntity();
+        source1.AddRelation(new AttackRelation { target = target });
+        source2.AddRelation(new GuardRelation  { target = target });
+        var targetId = target.Id;
+
+        store.OnRelationChanged += _ => throw new InvalidOperationException("from handler");
+        Throws<InvalidOperationException>(() => target.DeleteEntity());
+
+        AreEqual(0, source1.GetRelations<AttackRelation>().Length);
+        AreEqual(0, source2.GetRelations<GuardRelation>().Length);
+
+        var reused = store.CreateEntity();
+        AreEqual(targetId, reused.Id);
+        AreEqual(0, reused.GetIncomingLinks<GuardRelation>().Count);
+    }
+
+    [Test]
+    public static void RelationChanged_HandlerAddsRelation_KeyStaysValidForLaterHandlers()
+    {
+        var store = new EntityStore();
+        var a     = store.CreateEntity();
+        var b     = store.CreateEntity();
+        store.OnRelationChanged += args => {
+            if (args.EntityId == a.Id && args.Key<IntRelation,int>() == 7) {
+                b.AddRelation(new IntRelation { value = 99 });
+            }
+        };
+        var keys = new List<string>();
+        store.OnRelationChanged += args => keys.Add($"{args.EntityId}:{args.Key<IntRelation,int>()}");
+
+        a.AddRelation(new IntRelation { value = 7 });
+
+        AreEqual(new [] { $"{b.Id}:99", $"{a.Id}:7" }, keys.ToArray());
+    }
+
+    [Test]
+    public static void DeleteEntity_ReentrantFromDeleteEvent_KeepsCountCorrect()
+    {
+        var store = new EntityStore();
+        var a     = store.CreateEntity();
+        var b     = store.CreateEntity();
+        var count = store.Count;
+        bool once = false;
+        store.OnEntityDelete += args => {
+            if (once) return;
+            once = true;
+            args.Entity.DeleteEntity();
+        };
+        a.DeleteEntity();
+
+        AreEqual(count - 1, store.Count);
+        IsFalse (b.IsNull);
+    }
+
+    [Test]
+    public static void ClearRelations_HandlerUnsubscribes_IsNotInvokedAgain()
+    {
+        var store  = new EntityStore();
+        var entity = store.CreateEntity();
+        for (int n = 1; n <= 3; n++) {
+            entity.AddRelation(new IntRelation { value = n });
+        }
+        int calls = 0;
+        Action<RelationChanged> handler = null;
+        handler = _ => { calls++; store.OnRelationChanged -= handler; };
+        store.OnRelationChanged += handler;
+
+        entity.ClearRelations<IntRelation>();
+
+        AreEqual(1, calls);
     }
 }
 

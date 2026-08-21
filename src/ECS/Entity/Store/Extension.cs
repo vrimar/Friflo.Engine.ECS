@@ -59,6 +59,7 @@ internal partial struct StoreExtension
     
 #region entity relations
     internal                        AbstractEntityRelations[]   relationsMap;               //  8   - map & its AbstractEntityRelations created on demand
+    internal    Action                <RelationChanged>         relationChanged;            //  8   - fires event on add, update or remove a relation
     #endregion
     
     internal StoreExtension(PidType pidType)

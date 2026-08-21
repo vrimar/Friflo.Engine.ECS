@@ -176,7 +176,7 @@ internal sealed class RelationType<T> : ComponentType
         if (reader.componentReader.Error.ErrSet) {
             return;
         }
-        AbstractEntityRelations.AddRelation(entity.store, entity.Id, relation);
+        AbstractEntityRelations.AddRelationSilent(entity.store, entity.Id, relation);
     }
     
     internal override StructHeap CreateHeap() {

@@ -549,7 +549,6 @@ public readonly partial struct Entity : IEquatable<Entity>, IComparable<Entity>
             }
             finally {
                 store.DeleteNode(this);
-                Archetype.MoveLastComponentsTo(node.archetype, node.compIndex, true);
             }
             return;
         }

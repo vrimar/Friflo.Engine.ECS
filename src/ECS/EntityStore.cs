@@ -135,7 +135,15 @@ public sealed partial class EntityStore : EntityStoreBase
     /// <summary>Add / remove an event handler for <see cref="ECS.ScriptChanged"/> events triggered by:<br/>
     /// <see cref="Entity.RemoveScript{T}"/> .</summary>
     public  event   Action<ScriptChanged>           OnScriptRemoved         { add => extension.scriptRemoved    += value;   remove => extension.scriptRemoved   -= value; }
-    
+
+    /// <summary>Add / remove an event handler for <see cref="ECS.RelationChanged"/> events triggered by:<br/>
+    /// <see cref="RelationExtensions.AddRelation{TRelation}"/> <br/>
+    /// <see cref="RelationExtensions.RemoveRelation{TRelation,TKey}"/> <br/>
+    /// <see cref="RelationExtensions.RemoveRelation{TRelation}(Entity,Entity)"/> <br/>
+    /// <see cref="RelationExtensions.ClearRelations{TRelation}"/> <br/>
+    /// <see cref="Entity.DeleteEntity"/> of a link relation target.</summary>
+    public  event   Action<RelationChanged>         OnRelationChanged       { add => extension.relationChanged  += value;   remove => extension.relationChanged -= value; }
+
     /// <summary> Fire events in case an <see cref="Entity"/> changed. </summary>
     public  event   EventHandler<EntitiesChanged>   OnEntitiesChanged       { add => intern.entitiesChanged     += value;   remove => intern.entitiesChanged    -= value; }
     
@@ -169,6 +177,8 @@ public sealed partial class EntityStore : EntityStoreBase
         internal readonly   PidType                 pidType;            //   4  - pid != id  /  pid == id
         internal            int                     sequenceId;         //   4  - incrementing id used for next new entity
         internal            StackArray<int>         recycleIds;         //  16  - contains id of deleted entities
+        internal            int[]                   deletingIds;        //   8  - ids inside DeleteNode. Their nodes are
+        internal            int                     deletingCount;      //   4    already cleared but must not be handed out
         //
         internal    SignalHandler[]                 signalHandlerMap;   //   8
         internal    List<SignalHandler>             signalHandlers;     //   8 
@@ -190,6 +200,7 @@ public sealed partial class EntityStore : EntityStoreBase
             this.pidType        = pidType;
             sequenceId          = Static.MinNodeId - 1;
             recycleIds          = new StackArray<int>(Array.Empty<int>());
+            deletingIds         = Array.Empty<int>();
             signalHandlerMap    = Array.Empty<SignalHandler>();
         }
     }

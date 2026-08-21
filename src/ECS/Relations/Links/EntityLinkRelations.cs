@@ -15,6 +15,8 @@ namespace Friflo.Engine.ECS.Relations;
 internal class EntityLinkRelations<TRelation> : GenericEntityRelations<TRelation, Entity>
     where TRelation : struct, ILinkRelation
 {
+    private Entity[] sourceScratch = Array.Empty<Entity>();
+
     /// Instance created at <see cref="AbstractEntityRelations.GetEntityRelations"/>
     public EntityLinkRelations(ComponentType componentType, Archetype archetype, StructHeap heap)
         : base(componentType, archetype, heap)
@@ -50,6 +52,7 @@ internal class EntityLinkRelations<TRelation> : GenericEntityRelations<TRelation
     internal override bool AddRelation<T>(int id, in T relation)
     {
         Entity target   = RelationUtils<T, Entity>.GetRelationKey(relation);
+        keyStash        = target;
         bool added      = true;
         int position    = FindRelationPosition(id, target, out var positions, out _);
         if (position >= 0) {
@@ -82,10 +85,42 @@ internal class EntityLinkRelations<TRelation> : GenericEntityRelations<TRelation
         version++;
         linkEntityMap.TryGetValue(targetId, out var sourceIds);
         var sourceIdSpan = sourceIds.GetSpan(linkIdsHeap, store);
-        // TODO check if it necessary to make a copy of idSpan - e.g. by stackalloc
-        foreach (var sourceId in sourceIdSpan) {
+        int count        = sourceIdSpan.Length;
+        if (count == 0) {
+            return;
+        }
+        // RemoveRelation() mutates the span - and the event handlers below may mutate it further
+        var sources = sourceScratch;
+        if (sources.Length < count) {
+            sources = new Entity[count];
+        }
+        sourceScratch = Array.Empty<Entity>(); // a handler below may re-enter with the same relation type
+        StashPush();
+        try {
+            for (int n = 0; n < count; n++) {
+                sources[n] = new Entity(store, sourceIdSpan[n]);  // captures the revision - ids get recycled
+            }
             var target = new Entity(store, targetId);
-            RemoveRelation(sourceId, target);
+            for (int n = 0; n < count; n++) {
+                if (!RemoveRelation(sources[n].Id, target)) {
+                    sources[n] = default;
+                }
+            }
+            if (store.extension.relationChanged == null) {
+                return;
+            }
+            for (int n = 0; n < count; n++) {
+                var source = sources[n];
+                if (source.IsNull) {
+                    continue;
+                }
+                keyStash = target;
+                SendRelationChanged(source.Id, RelationChangedAction.Remove, heap.structIndex);
+            }
+        }
+        finally {
+            StashPop();
+            sourceScratch = sources;
         }
     }
     

@@ -60,7 +60,7 @@ public partial class EntityStore
         if (id < Static.MinNodeId) {
             throw InvalidEntityIdException(id, nameof(id));
         }
-        if (id < nodes.Length && nodes[id].archetype != null) {
+        if (id < nodes.Length && nodes[id].archetype != null || IsDeletingId(id)) {
             throw IdAlreadyInUseException(id, nameof(id));
         }
     }
