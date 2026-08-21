@@ -34,7 +34,7 @@ internal abstract class AbstractEntityRelations
     
     internal  readonly  EntityStore                 store;
     internal  readonly  IdArrayHeap                 idHeap      = new();
-    internal  readonly  int                         relationBit;
+    internal  readonly  long                        relationBit;
     
     //  --- link relations
     /// map:  indexed / linked entity (id)  ->  entities (ids) containing a <see cref="ILinkRelation"/> referencing the indexed / linked entity.
@@ -49,7 +49,7 @@ internal abstract class AbstractEntityRelations
         store           = archetype.entityStore;
         this.heap       = heap;
         var types       = new ComponentTypes(componentType);
-        relationBit     = (int)types.bitSet.l0;
+        relationBit     = types.bitSet.l0;
     }
     
     internal  abstract bool                 AddRelation<TRelation>       (int id, in TRelation relation) where TRelation : struct, IRelation;

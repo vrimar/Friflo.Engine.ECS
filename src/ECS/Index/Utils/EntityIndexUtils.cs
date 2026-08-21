@@ -23,7 +23,7 @@ internal static class EntityIndexUtils
             return; // unexpected. Better safe than sorry. Used belts with suspenders :)
         }
         var nodes           =  componentIndex.store.nodes;
-        int complement      = ~componentIndex.indexBit;
+        long complement     = ~componentIndex.indexBit;
         nodes[id].isOwner  &=  complement;
         if (ids.Count == 1) {
             nodes[target].isLinked   &= complement;
@@ -45,7 +45,7 @@ internal static class EntityIndexUtils
             return; // unexpected. Better safe than sorry. Used belts with suspenders :)
         }
         var nodes           = componentIndex.store.nodes;
-        int indexBit        = componentIndex.indexBit;
+        long indexBit       = componentIndex.indexBit;
         nodes[id].isOwner  |= indexBit;
         if (ids.Count == 0) {
             nodes[target].isLinked   |= indexBit;

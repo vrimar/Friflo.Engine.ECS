@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text;
 using static System.Diagnostics.DebuggerBrowsableState;
 using Browse = System.Diagnostics.DebuggerBrowsableAttribute;
 
@@ -95,6 +96,7 @@ public sealed class EntitySchema
         var scriptList      = schemaTypes.scripts;
         var tagList         = schemaTypes.tags;
         
+        CheckOwnerMaskCapacity(componentList);
         maxIndexedStructIndex   = schemaTypes.indexCount + 1;
         engineDependants        = dependants;
         int count               = componentList.Count + scriptList.Count;
@@ -158,6 +160,43 @@ public sealed class EntitySchema
         CreateNameSortIndexes();
     }
     
+    /// <summary>
+    /// Highest <see cref="ComponentType.StructIndex"/> an indexed component or relation type can use.
+    /// 63, not 64: <see cref="EntityNode.isOwner"/> is one 64-bit word and <c>StructIndex</c> starts at 1.
+    /// </summary>
+    internal const int MaxOwnerStructIndex = 63;
+
+    /// <remarks>
+    /// Without this an overflowing type silently gets no owner bit, so its index and relation rows
+    /// outlive the entity that created them.
+    /// </remarks>
+    internal static void CheckOwnerMaskCapacity(List<ComponentType> componentList)
+    {
+        StringBuilder exceeding = null;
+        foreach (var componentType in componentList) {
+            if (componentType.IndexType == null && componentType.RelationType == null) {
+                continue;
+            }
+            if (componentType.StructIndex <= MaxOwnerStructIndex) {
+                continue;
+            }
+            if (exceeding == null) {
+                exceeding = new StringBuilder();
+            } else {
+                exceeding.Append(", ");
+            }
+            exceeding.Append(componentType.Type.Name).Append('@').Append(componentType.StructIndex);
+        }
+        if (exceeding == null) {
+            return;
+        }
+        var msg =
+            $"number of indexed component and relation types exceed {nameof(MaxOwnerStructIndex)}: {MaxOwnerStructIndex}. " +
+            $"These types get no owner bit in {nameof(EntityNode)}, so their rows would outlive deleted entities: " +
+            exceeding;
+        throw new InvalidOperationException(msg);
+    }
+
     private static void DuplicateComponentKey(SchemaType schemaType)
     {
         var msg = $"warning: Duplicate component name: '{schemaType.ComponentKey}' for: {schemaType.Type.FullName}. Add unique [ComponentKey()] attribute.";

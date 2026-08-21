@@ -73,9 +73,11 @@ public struct EntityNode
     /// Use <see cref="IsOwner"/> to see <see cref="ComponentTypes"/> by name.<br/>
     /// This masks prevents the insane cost when deleting an entity.<br/>
     /// Otherwise, all <see cref="AbstractEntityRelations"/> and <see cref="AbstractComponentIndex"/> instances need to be iterated
-    /// to check if the entity is a key in their Dictionary's and perform required cleanup.
+    /// to check if the entity is a key in their Dictionary's and perform required cleanup.<br/>
+    /// Only <see cref="ComponentType.StructIndex"/> 1 .. <see cref="EntitySchema.MaxOwnerStructIndex"/>
+    /// fit here; <see cref="EntitySchema.CheckOwnerMaskCapacity"/> rejects schemas that exceed it.
     /// </remarks>
-    [Browse(Never)] internal    int             isOwner;            //  4
+    [Browse(Never)] internal    long            isOwner;            //  8
     
     /// <summary>
     /// Bit mask for all <see cref="EntityIndex"/> and all <see cref="EntityLinkRelations{TRelation}"/> instances.<br/> 
@@ -87,7 +89,7 @@ public struct EntityNode
     /// Otherwise, all <see cref="EntityIndex"/> and <see cref="EntityLinkRelations{TRelation}"/> instances need to be iterated
     /// to check if the entity is a key in their Dictionary's and perform required cleanup.
     /// </remarks>
-    [Browse(Never)] internal    int             isLinked;           //  4
+    [Browse(Never)] internal    long            isLinked;           //  8
     
     /// <remarks> Used to avoid enumeration of <see cref="EntityStore.Intern.signalHandlers"/> </remarks>
                     internal    byte            signalTypeCount;    //  1   number of different signal types attached to the entity.

@@ -53,7 +53,7 @@ private const string JsonMissingLinkRelation =
         AreEqual(1002 , relations1[0].target.Id);
         
         var incomingLinks = entity2.GetIncomingLinks<AttackRelation>();
-        var attackBit = 1 << StructInfo<AttackRelation>.Index;
+        var attackBit = 1L << StructInfo<AttackRelation>.Index;
         AreEqual(attackBit, store.nodes[1].isOwner);
         AreEqual(attackBit, store.nodes[1002].isLinked);
         

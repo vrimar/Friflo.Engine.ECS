@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using Friflo.Engine.ECS.Index;
 using Friflo.Engine.ECS.Relations;
 
@@ -16,6 +17,7 @@ namespace Friflo.Engine.ECS;
 public sealed class NativeAOT
 {
     private             EntitySchema                entitySchema;
+    private             ExceptionDispatchInfo       schemaError;
     private             bool                        engineTypesRegistered;
         
     private readonly    HashSet<Type>               typeSet     = new();
@@ -71,10 +73,17 @@ A type initializer threw an exception. To determine which type, inspect the Inne
     
     private EntitySchema CreateSchemaInternal()
     {
+        // a retry would re-register every type: schemaTypes is never cleared
+        schemaError?.Throw();
         InitSchema();
-
-        var dependants  = schemaTypes.CreateSchemaTypes(assemblies);
-        entitySchema    = new EntitySchema(dependants, schemaTypes);
+        try {
+            var dependants  = schemaTypes.CreateSchemaTypes(assemblies);
+            entitySchema    = new EntitySchema(dependants, schemaTypes);
+        }
+        catch (Exception exception) {
+            schemaError = ExceptionDispatchInfo.Capture(exception);
+            throw;
+        }
         Instance        = this;
         return entitySchema;
     }
