@@ -59,6 +59,24 @@ public static class Test_ComponentType
         AreEqual(expect, e!.Message);
     }
 
+    /// <summary> cover <see cref="EntitySchema.CheckBitSetCapacity"/> </summary>
+    [Test]
+    public static void Test_ComponentSchema_BitSetCapacity()
+    {
+        var withinLimit = new List<ComponentType>();
+        for (int n = 0; n < EntitySchema.MaxStructIndex; n++) {
+            withinLimit.Add(new ComponentType<Position>($"plain{n}", n + 1, null, null));
+        }
+        EntitySchema.CheckBitSetCapacity(withinLimit);
+
+        withinLimit.Add(new ComponentType<Position>("exceeding", EntitySchema.MaxStructIndex + 1, null, null));
+        var e = Throws<InvalidOperationException>(() => EntitySchema.CheckBitSetCapacity(withinLimit));
+        var expect =
+            "number of component types exceed MaxStructIndex: 255. " +
+            "Types past it alias the bit of another type in BitSet. count: 256";
+        AreEqual(expect, e!.Message);
+    }
+
     /*
     /// <summary> cover <see cref="SchemaUtils.CreateSchemaType"/> </summary>
     [Test]

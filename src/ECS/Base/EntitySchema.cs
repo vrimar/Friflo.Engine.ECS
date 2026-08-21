@@ -97,6 +97,7 @@ public sealed class EntitySchema
         var tagList         = schemaTypes.tags;
         
         CheckOwnerMaskCapacity(componentList);
+        CheckBitSetCapacity(componentList);
         maxIndexedStructIndex   = schemaTypes.indexCount + 1;
         engineDependants        = dependants;
         int count               = componentList.Count + scriptList.Count;
@@ -194,6 +195,27 @@ public sealed class EntitySchema
             $"number of indexed component and relation types exceed {nameof(MaxOwnerStructIndex)}: {MaxOwnerStructIndex}. " +
             $"These types get no owner bit in {nameof(EntityNode)}, so their rows would outlive deleted entities: " +
             exceeding;
+        throw new InvalidOperationException(msg);
+    }
+
+    /// <summary>
+    /// Highest <see cref="ComponentType.StructIndex"/> a <see cref="Utils.BitSet"/> can represent.
+    /// 255, not 256: <see cref="Utils.BitSet"/> is four 64-bit words and <c>StructIndex</c> starts at 1.
+    /// </summary>
+    internal const int MaxStructIndex = 255;
+
+    /// <remarks>
+    /// Without this <see cref="Utils.BitSet.SetBit"/> shifts past the last word. C# masks the shift count,
+    /// so the type silently aliases onto the bit of another type.
+    /// </remarks>
+    internal static void CheckBitSetCapacity(List<ComponentType> componentList)
+    {
+        if (componentList.Count <= MaxStructIndex) {
+            return;
+        }
+        var msg =
+            $"number of component types exceed {nameof(MaxStructIndex)}: {MaxStructIndex}. " +
+            $"Types past it alias the bit of another type in {nameof(Utils.BitSet)}. count: {componentList.Count}";
         throw new InvalidOperationException(msg);
     }
 
