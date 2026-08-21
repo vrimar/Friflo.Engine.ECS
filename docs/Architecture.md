@@ -32,50 +32,8 @@
 
 ## Build Editor
 
-The Editor can be build and launched on Windows, macOS (both tested) and Linux (untested).
-
-### Dependency
-
-**.NET SDK 8.0**  
-1. Download and install SDK [.NET 8.0](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
-
-2. Check if .NET SDK CLI is available by requesting its version.  
-   If installed properly it returns  
-   `8.0.100`  
-   or a higher version if using a newer .NET SDK.
-```cmd
-dotnet --version
-```
-
-3. Clone git repository: https://github.com/friflo/Friflo.Engine.ECS
-
-4. Navigate to folder: `./src/apps/Editor`  
-   Assuming you are in the root folder of the git repository.
-```cmd
-cd ./src/apps/Editor
-```
-
-5. Build & Launch with
-```cmd
-dotnet run
-```
-
-6. When the Editor launches is also starts an HTTP server at:  
-   http://localhost:5000/  
-   The server has a Web UI with the following features:
-   - Access and modify entities in the **Explorer** panel.
-   - Subscribe to entity changes in the **Pub-Sub** panel.
-   - The server can be accessed using the REST or Websocket API to access and modify entities using HTTP.  
-     These API's can be tested in the **Playground** panel.
-
-   To get an impression about the WebUI of a similar server checkout the [DemoHub](http://ec2-18-215-176-108.compute-1.amazonaws.com/fliox/).
-
-
-7. Launch without build - *optional*  
-   The Editor should launch in less than a second.
-```cmd
-dotnet run --no-build
-```
+This fork does not ship the Editor. It lives in the upstream repository:
+[friflo/Friflo.Engine.ECS](https://github.com/friflo/Friflo.Engine.ECS) under `src/apps/Editor`.
 
 <br/><br/>
 
