@@ -75,23 +75,48 @@ public struct ChildEnumerator : IEnumerator<Entity>
 {
 #region fields
     private             int         index;      //  4
-    private readonly    IdArray     childIds;   //  8
-    private readonly    EntityStore store;      //  8
+    private             int         lastCount;  //  4
+    private             int         currentId;  //  4
+    private readonly    int         count;      //  4
+    private readonly    Entity      entity;     // 16
     private readonly    IdArrayHeap heap;       //  8
     #endregion
-    
+
     internal ChildEnumerator(in ChildEntities childEntities) {
-        childIds    = childEntities.ChildIds;
-        store       = childEntities.store;
-        heap        = store.extension.childHeap;
+        entity      = childEntities.entity;
+        heap        = childEntities.store.extension.childHeap;
+        count       = childEntities.ChildIds.count;
+        lastCount   = count;
     }
-    
+
+    /// Resolved per access. A snapshot taken at construction would survive a mutation made while
+    /// enumerating and read a recycled block, i.e. another entity's children.
+    private readonly    IdArray     ChildIds    => entity.GetChildIdArray();
+
     // --- IEnumerator<>
-    public readonly Entity Current   => new Entity(store, childIds.GetAt(index - 1, heap));
-    
+    public readonly Entity Current { get {
+        if (index == 0) {
+            throw new IndexOutOfRangeException("Index was out of range. Must be >= 0 and < ChildEntities.Count");
+        }
+        return new Entity(entity.store, currentId);
+    }}
+
     // --- IEnumerator
     public bool MoveNext() {
-        if (index < childIds.count) {
+        var childIds    = ChildIds;
+        int childCount  = childIds.count;
+        if (childCount < lastCount) {
+            // removed children shifted the remaining ones left - step back or they would be skipped
+            index -= lastCount - childCount;
+            if (index < 0) {
+                index = 0;
+            }
+        }
+        lastCount = childCount;
+        // count bounds an enumeration that keeps adding children; childCount stops one that removes them
+        if (index < count && index < childCount) {
+            // read the id here: resolving it in Current would let user code recycle the block in between
+            currentId = childIds.GetAt(index, heap);
             index++;
             return true;
         }
@@ -99,7 +124,8 @@ public struct ChildEnumerator : IEnumerator<Entity>
     }
 
     public void Reset() {
-        index = 0;
+        index       = 0;
+        lastCount   = ChildIds.count;
     }
     
     object IEnumerator.Current => Current;

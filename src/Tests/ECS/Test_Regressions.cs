@@ -113,6 +113,55 @@ public static class Test_Regressions
     }
 
     [Test]
+    public static void ChildEntities_RemoveDuringEnumeration_DoesNotReadRecycledBlock()
+    {
+        var store  = new EntityStore();
+        var parent = store.CreateEntity();
+        var other  = store.CreateEntity();
+        var c0     = store.CreateEntity();
+        var c1     = store.CreateEntity();
+        var c2     = store.CreateEntity();
+        parent.AddChild(c0);
+        parent.AddChild(c1);
+        parent.AddChild(c2);
+
+        var visited = new List<int>();
+        foreach (var child in parent.ChildEntities) {
+            visited.Add(child.Id);
+            if (child.Id != c0.Id) {
+                continue;
+            }
+            parent.RemoveChild(c0);
+            other.AddChild(store.CreateEntity());
+            other.AddChild(store.CreateEntity());
+            other.AddChild(store.CreateEntity());
+        }
+        CollectionAssert.IsSubsetOf(visited, new[] { c0.Id, c1.Id, c2.Id });
+        AreEqual(2, parent.ChildCount);
+        AreEqual(c1.Id, parent.ChildEntities[0].Id);
+        AreEqual(c2.Id, parent.ChildEntities[1].Id);
+    }
+
+    [Test]
+    public static void ChildEntities_AddDuringEnumeration_Terminates()
+    {
+        var store  = new EntityStore();
+        var parent = store.CreateEntity();
+        parent.AddChild(store.CreateEntity());
+        parent.AddChild(store.CreateEntity());
+
+        int visited = 0;
+        foreach (var _ in parent.ChildEntities) {
+            if (++visited > 100) {
+                break;
+            }
+            parent.AddChild(store.CreateEntity());
+        }
+        AreEqual(2, visited);
+        AreEqual(4, parent.ChildCount);
+    }
+
+    [Test]
     public static void DeleteEntity_ThrowingRelationHandler_CompletesTeardown()
     {
         var store   = new EntityStore();
@@ -215,6 +264,44 @@ public static class Test_Regressions
         entity.ClearRelations<IntRelation>();
 
         AreEqual(1, calls);
+    }
+
+    [Test]
+    public static void ChildEntities_DeleteCurrentDuringEnumeration_VisitsEveryChild()
+    {
+        for (int count = 1; count <= 8; count++) {
+            var store  = new EntityStore();
+            var parent = store.CreateEntity();
+            for (int n = 0; n < count; n++) {
+                parent.AddChild(store.CreateEntity());
+            }
+            var visited = new List<int>();
+            foreach (var child in parent.ChildEntities) {
+                visited.Add(child.Id);
+                child.DeleteEntity();
+            }
+            AreEqual(count, visited.Count,     $"child count: {count}");
+            AreEqual(0,     parent.ChildCount, $"child count: {count}");
+        }
+    }
+
+    [Test]
+    public static void ChildEntities_RemoveCurrentDuringEnumeration_VisitsEveryChild()
+    {
+        for (int count = 1; count <= 8; count++) {
+            var store  = new EntityStore();
+            var parent = store.CreateEntity();
+            for (int n = 0; n < count; n++) {
+                parent.AddChild(store.CreateEntity());
+            }
+            var visited = new List<int>();
+            foreach (var child in parent.ChildEntities) {
+                visited.Add(child.Id);
+                parent.RemoveChild(child);
+            }
+            AreEqual(count, visited.Count,     $"child count: {count}");
+            AreEqual(0,     parent.ChildCount, $"child count: {count}");
+        }
     }
 }
 
