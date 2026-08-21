@@ -55,6 +55,11 @@ internal sealed class ValueClassIndex<TIndexedComponent,TValue> : GenericCompone
         var heap        = idHeap;
         var components  = ((StructHeap<TIndexedComponent>)archetype.heapMap[structIndex]).components;
         TValue value    = components[compIndex].GetIndexedValue();
+        if (value == null) {
+            RemoveComponentValue(id, null);
+            store.nodes[id].isOwner &= ~indexBit;
+            return;
+        }
         map.TryGetValue(value, out var idArray);
         var idSpan  = idArray.GetSpan(heap, store);
         var index   = idSpan.IndexOf(id);
@@ -82,6 +87,8 @@ internal sealed class ValueClassIndex<TIndexedComponent,TValue> : GenericCompone
         var idSpan  = nullValue.GetSpan(heap, store);
         if (idSpan.IndexOf(id) != -1) return; // unexpected. Better safe than sorry. Used belts with suspenders :)
         nullValue.Add(id, heap);
+        // without the owner bit DeleteEntity() skips this index and the row outlives the entity
+        store.nodes[id].isOwner |= indexBit;
     }
     
     internal void RemoveComponentValue(int id, in TValue value)
@@ -95,6 +102,7 @@ internal sealed class ValueClassIndex<TIndexedComponent,TValue> : GenericCompone
         var index   = idSpan.IndexOf(id);
         if (index == -1) return; // unexpected. Better safe than sorry. Used belts with suspenders :)
         nullValue.RemoveAt(index, heap);
+        store.nodes[id].isOwner &= ~indexBit;
     }
     #endregion
     

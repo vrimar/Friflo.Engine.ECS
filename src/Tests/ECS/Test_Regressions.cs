@@ -468,6 +468,31 @@ public static class Test_Regressions
         IsNull(serializer.ReadIntoStore(target, Serialize.Test_Serializer.StringAsStream(written)).error);
         AreEqual(2, target.GetEntityById(1).GetRelations<AttackRelation>().Length);
     }
+
+    [Test]
+    public static void DeleteEntity_NullIndexedValue_RemovesIndexRow()
+    {
+        var store  = new EntityStore { RecycleIds = false };
+        var entity = store.CreateEntity();
+        entity.AddComponent(new Index.IndexedName { name = null });
+        entity.DeleteEntity();
+        AreEqual(0, store.Query().HasValue<Index.IndexedName,string>(null).Entities.Count);
+
+        var recycleStore = new EntityStore();
+        var doomed       = recycleStore.CreateEntity();
+        doomed.AddComponent(new Index.IndexedName { name = null });
+        int id = doomed.Id;
+        doomed.DeleteEntity();
+
+        var reused = recycleStore.CreateEntity();
+        AreEqual(id, reused.Id);
+        IsFalse (reused.HasComponent<Index.IndexedName>());
+        AreEqual(0, recycleStore.Query().HasValue<Index.IndexedName,string>(null).Entities.Count);
+
+        var liveStore = new EntityStore();
+        liveStore.CreateEntity().AddComponent(new Index.IndexedName { name = null });
+        AreEqual(1, liveStore.Query().HasValue<Index.IndexedName,string>(null).Entities.Count);
+    }
 }
 
 }
