@@ -448,6 +448,26 @@ public static class Test_Regressions
         IsNull(error);
         AreEqual(new [] { 2, 3, 4 }, store.GetEntityById(1).ChildIds.ToArray());
     }
+
+    [Test]
+    public static void WriteStore_LinkTargetNotAlive_KeepsTargetId()
+    {
+        var store      = new EntityStore();
+        var serializer = new EntitySerializer();
+        var json       = "[{\"id\":1,\"components\":{\"multi-attack\":[{\"speed\":0,\"target\":1003},{\"speed\":11,\"target\":1004}]}}]";
+        IsNull(serializer.ReadIntoStore(store, Serialize.Test_Serializer.StringAsStream(json)).error);
+        AreEqual(2, store.GetEntityById(1).GetRelations<AttackRelation>().Length);
+
+        var stream = new MemoryStream();
+        serializer.WriteStore(store, stream);
+        var written = Serialize.Test_Serializer.MemoryStreamAsString(stream);
+        IsTrue(written.Contains("\"target\":1003"));
+        IsTrue(written.Contains("\"target\":1004"));
+
+        var target = new EntityStore();
+        IsNull(serializer.ReadIntoStore(target, Serialize.Test_Serializer.StringAsStream(written)).error);
+        AreEqual(2, target.GetEntityById(1).GetRelations<AttackRelation>().Length);
+    }
 }
 
 }

@@ -13,11 +13,17 @@ internal class TypeMapperEntity : TypeMapper<Entity>
     public override bool    IsNull(ref Entity value)  => value.Id == 0;
     
     public override void Write(ref Writer writer, Entity value) {
-        if (value.IsNull) {
+        if (value.Id == 0 || WasDeleted(value)) {
             writer.AppendNull();
             return;
         }
         writer.format.AppendInt(ref writer.bytes, value.Id);
+    }
+
+    // not IsNull: a reference read from an incomplete stream has no node either, and keeps its id
+    private static bool WasDeleted(Entity value) {
+        var store = value.store;
+        return store == null || store.nodes[value.Id].revision != value.Revision;
     }
     
     public override Entity Read(ref Reader reader, Entity slot, out bool success)
