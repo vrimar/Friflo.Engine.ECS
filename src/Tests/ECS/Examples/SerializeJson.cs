@@ -2,8 +2,8 @@ using System;
 using System.IO;
 using Friflo.Engine.ECS;
 using Friflo.Engine.ECS.Serialize;
-using Tests.ECS;
 using Friflo.Json.Fliox;
+using Tests.ECS;
 // ReSharper disable ArrangeTypeMemberModifiers
 
 // ReSharper disable NotAccessedField.Local

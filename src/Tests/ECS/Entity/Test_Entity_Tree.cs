@@ -85,12 +85,9 @@ public static class Test_Entity_Tree
         // -- add same child again
         AreEqual(-1,        root.AddChild(child));       // event handler is not called
         AreEqual(1,         childEntities.Ids.Length);
-        var rootNode = root.GetComponent<TreeNode>();
-        AreEqual(1,         rootNode.ChildCount);
-        AreEqual(1,         rootNode.GetChildIds(store).Length);
-        AreEqual("ChildCount: 1", rootNode.ToString());
-    //  AreEqual("id: 1  [EntityName]  ChildCount: 1  flags: Created",  root.ToString()); TREE_NODE
-        AreEqual("id: 1  [TreeNode, EntityName]",  root.ToString());
+        AreEqual(1,         root.ChildCount);
+        AreEqual(1,         root.ChildIds.Length);
+        AreEqual("id: 1  [EntityName]",  root.ToString());
         AreEqual(1,         childEntities.Count);
         IsTrue(child ==     childEntities[0]);
         
@@ -139,10 +136,9 @@ public static class Test_Entity_Tree
             // --- insert same child (id: 4) at same index again
             root.InsertChild(0, child4);     // event handler is not called
             AreEqual(1,                                 childNodes.Ids.Length);
-            var rootNode = root.GetComponent<TreeNode>();
-            AreEqual(1,                                 rootNode.ChildCount);
-            AreEqual(1,                                 rootNode.GetChildIds(store).Length);
-            AreEqual("id: 1  [TreeNode, EntityName]",  root.ToString());
+            AreEqual(1,                                 root.ChildCount);
+            AreEqual(1,                                 root.ChildIds.Length);
+            AreEqual("id: 1  [EntityName]",  root.ToString());
             IsTrue(child4 ==                            childNodes[0]);
             events.RemoveHandler();
         }
@@ -428,9 +424,8 @@ public static class Test_Entity_Tree
         var child3      = store.CreateEntity(3);
         root.AddChild(child2);
         root.AddChild(child3);
-        var node        = root.GetComponent<TreeNode>();
-        var ids         = node.GetChildIds(store).Debug();
-        var children    = node.GetChildEntities(store);
+        var ids         = root.ChildIds.Debug();
+        var children    = root.ChildEntities;
         AreEqual("{ 2, 3 }", ids);
         AreEqual(2, children.Count);
         IsTrue(child2 == children[0]);
@@ -534,7 +529,7 @@ public static class Test_Entity_Tree
         IsTrue(root ==      child.Parent);
         IsTrue(root ==      subChild.Store.StoreRoot);
         var childArchetype = child.Archetype;
-        AreEqual(2,         childArchetype.Count);
+        AreEqual(3,         childArchetype.Count);
         AreEqual(treeNode,  subChild.TreeMembership);
         NotNull (child.Archetype);
         NotNull (child.Store);
@@ -544,7 +539,7 @@ public static class Test_Entity_Tree
         events.RemoveHandler();
         child.DeleteEntity();
         Mem.AssertNoAlloc(start);
-        AreEqual(1,         childArchetype.Count);
+        AreEqual(2,         childArchetype.Count);
         AreEqual(2,         store.Count);
         AreEqual(0,         root.ChildCount);
         AreEqual(floating,  subChild.TreeMembership);

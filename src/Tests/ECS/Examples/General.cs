@@ -1,7 +1,7 @@
 ﻿using System;
 using Friflo.Engine.ECS;
-using Tests.ECS;
 using NUnit.Framework;
+using Tests.ECS;
 using static Friflo.Engine.ECS.ComponentChangedAction;
 
 // ReSharper disable UnusedVariable

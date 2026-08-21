@@ -36,15 +36,6 @@ public static class Test_Deprecated
         _ = store.Query<Position, Rotation, Scale3, MyComponent1, MyComponent2>()   .Chunks.EntityCount;
     }
     
-    [Test]
-    public static void Test_Deprecated_TreeNode_ChildIds()
-    {
-        var node = new TreeNode();
-        var e = Throws<InvalidOperationException>(() => {
-            _ = node.ChildIds;
-        });
-        AreEqual("ChildIds is obsolete. Use GetChildIds()", e!.Message);
-    }
 }
 
 }

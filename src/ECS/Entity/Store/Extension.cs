@@ -31,6 +31,7 @@ internal partial struct StoreExtension
     
 #region entity hierarchy
     internal                            int[]                   parentMap;                  //  8
+    internal                            IdArray[]               childMap;                   //  8
     internal readonly                   IdArrayHeap             childHeap;                  //  8
     // --- events
     internal    Action                <ChildEntitiesChanged>    childEntitiesChanged;       //  8   - fires event on add, insert, remove or delete an Entity
@@ -63,6 +64,7 @@ internal partial struct StoreExtension
     internal StoreExtension(PidType pidType)
     {
         parentMap   = Array.Empty<int>();
+        childMap    = Array.Empty<IdArray>();
         childHeap   = new IdArrayHeap();
         if (pidType == PidType.RandomPids) {
             randPid  = new Random();
@@ -75,6 +77,9 @@ internal partial struct StoreExtension
     }
     
     internal void RemoveEntity(int id) {
+        if (id < childMap.Length) {
+            childMap[id].Clear(childHeap);
+        }
         if (id2Pid != null) {
             var pid = id2Pid[id];
             id2Pid.Remove(id);

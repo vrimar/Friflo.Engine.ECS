@@ -292,7 +292,6 @@ public sealed class Archetype
     }
     
     /// <summary>
-    /// <see cref="TreeNode"/> components (child entities) are not copied.<br/>
     /// Otherwise, two different entities would have the same child entities.
     /// </summary>
     internal static void CopyComponents(Archetype sourceArch, Archetype targetArch, in CopyContext context, long updateIndexTypes)

@@ -79,7 +79,7 @@ public static class Test_ComponentTypes
         var engine = schema.EngineDependants[0];
         AreEqual("CoFuse.Engine.ECS",   engine.AssemblyName);
         AreEqual("CoFuse.Engine.ECS",   engine.ToString());
-        AreEqual(3,                     engine.Types.Length);
+        AreEqual(2,                     engine.Types.Length);
         foreach (var type in engine.Types) {
             AreSame(engine.Assembly, type.Type.Assembly);
         }

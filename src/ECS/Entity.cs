@@ -3,6 +3,7 @@
 
 using System;
 using System.Runtime.InteropServices;
+using Friflo.Engine.ECS.Collections;
 using static System.Diagnostics.DebuggerBrowsableState;
 using static Friflo.Engine.ECS.StoreOwnership;
 using static Friflo.Engine.ECS.TreeMembership;
@@ -261,7 +262,7 @@ public readonly partial struct Entity : IEquatable<Entity>, IComparable<Entity>
     // ------------------------------------ child / tree properties -------------------------------
 #region child / tree - properties
     /// <summary>Return the number of child entities.</summary>
-    [Browse(Never)] public  int                 ChildCount { get { TryGetTreeNode(out var node); return node.childIds.count; } }
+    [Browse(Never)] public  int                 ChildCount => GetChildIdArray().count;
 
     /// <summary>Returns the parent entity that contains the entity.</summary>
     /// <returns>
@@ -559,17 +560,12 @@ public readonly partial struct Entity : IEquatable<Entity>, IComparable<Entity>
     /// <returns></returns>
     public int  GetChildIndex(Entity child)     => EntityStore.GetChildIndex(this, child.Id);
     
-    internal bool TryGetTreeNode(out TreeNode treeNode)
+    internal IdArray GetChildIdArray()
     {
         var node = store.nodes[Id];
         if (node.IsAlive(Revision)) {
-            var heap = node.archetype.heapMap[StructInfo<TreeNode>.Index];
-            if (heap == null) {
-                treeNode = default;
-                return false;
-            }
-            treeNode = ((StructHeap<TreeNode>)heap).components[node.compIndex];
-            return true;
+            var childMap = store.extension.childMap;
+            return Id < childMap.Length ? childMap[Id] : default;
         }
         throw EntityNullException();
     }

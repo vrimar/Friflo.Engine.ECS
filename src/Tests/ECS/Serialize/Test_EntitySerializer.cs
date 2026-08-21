@@ -156,7 +156,7 @@ public static class Test_Serializer
         AreEqual(0,     child.Components.Count);
         AreEqual(0,     child.Tags.Count);
             
-        AreEqual("Components: [TreeNode, Position]",    root.Archetype.ComponentTypes.ToString());
+        AreEqual("Components: [Position]",    root.Archetype.ComponentTypes.ToString());
         AreEqual("Components: []",                      child.Archetype.ComponentTypes.ToString());
     }
     

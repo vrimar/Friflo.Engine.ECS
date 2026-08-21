@@ -29,9 +29,10 @@ public partial class EntityStore
         }
         int newLength   = last + capacity;
         ArrayUtils.Resize(ref nodes, newLength);
+        GrowChildMap(newLength);
         return newLength - last;
     }
-    
+
     private void EnsureNodesLength(int length)
     {
         int curLength = nodes.Length;
@@ -40,6 +41,17 @@ public partial class EntityStore
         }
         int newLength = Math.Max(length, 2 * curLength); // could grow slower to minimize heap pressure
         ArrayUtils.Resize(ref nodes, newLength);
+        GrowChildMap(newLength);
+    }
+
+    /// Stays empty until the first AddChild - a store that never uses the hierarchy must not pay for childMap.
+    private void GrowChildMap(int length)
+    {
+        var childMap = extension.childMap;
+        if (childMap.Length == 0 || childMap.Length >= length) {
+            return;
+        }
+        extension.childMap = ArrayUtils.Resize(ref childMap, length);
     }
     
     /// <summary>
@@ -50,15 +62,13 @@ public partial class EntityStore
         extension.randPid = new Random(seed);
     }
     
-    /// This message must be used if adding or removing ids from an entity <see cref="TreeNode"/>.
-    private static ref TreeNode GetTreeNodeRef(Entity entity)
+    private ref IdArray GetChildIdsRef(int entityId)
     {
-        var heap = entity.archetype.heapMap[StructInfo<TreeNode>.Index];
-        if (heap == null) {
-            entity.AddComponent<TreeNode>(); // set entity.archetype
-            heap = entity.archetype.heapMap[StructInfo<TreeNode>.Index];
-        } 
-        return ref ((StructHeap<TreeNode>)heap).components[entity.compIndex];
+        var childMap = extension.childMap;
+        if (entityId >= childMap.Length) {
+            childMap = extension.childMap = ArrayUtils.Resize(ref childMap, nodes.Length);
+        }
+        return ref childMap[entityId];
     }
     
 #region get / set parent
@@ -133,14 +143,13 @@ public partial class EntityStore
             OnChildNodeRemove(curParentId, childId, curIndex);
         }
         // --- add entity with given id as child to this entity
-        var parentEntity    = new Entity(this, parentId);
-        ref var parent      = ref GetTreeNodeRef(parentEntity);
-        int index           = parent.childIds.count;
+        ref var parentIds   = ref GetChildIdsRef(parentId);
+        int index           = parentIds.count;
         SetTreeParent(childId, parentId);
-        
-        parent.childIds.Add(childId, extension.childHeap);
+
+        parentIds.Add(childId, extension.childHeap);
         // SetTreeFlags(nodes, childId, nodes[parentId].flags & NodeFlags.TreeNode);
-        
+
         OnChildNodeAdd(parentId, childId, index);
         return index;
     }
@@ -150,9 +159,7 @@ public partial class EntityStore
         if (WouldCreateCycle(parentId, childId)) {
             throw OperationCycleException(parentId, childId);
         }
-        var parentEntity    = new Entity(this, parentId);
-        ref var parent      = ref GetTreeNodeRef(parentEntity);
-        if (childIndex > parent.childIds.count) {
+        if (childIndex > GetChildIdsRef(parentId).count) {
             throw new IndexOutOfRangeException();
         }
         var curParentId = GetTreeParentId(childId);
@@ -175,17 +182,17 @@ public partial class EntityStore
             }
             curIndex = RemoveChildNode(curParentId, childId);
             OnChildNodeRemove(curParentId, childId, curIndex);
-            
-            parent.childIds.InsertAt(childIndex, childId, extension.childHeap);
+
+            GetChildIdsRef(parentId).InsertAt(childIndex, childId, extension.childHeap);
             OnChildNodeAdd (parentId,            childId, childIndex);
             return;
         }
     InsertNode:
         // --- insert entity with given id as child to its parent
         SetTreeParent(childId, parentId);
-        parent.childIds.InsertAt(childIndex, childId, extension.childHeap);
+        GetChildIdsRef(parentId).InsertAt(childIndex, childId, extension.childHeap);
         // SetTreeFlags(nodes, childId, nodes[parentId].flags & NodeFlags.TreeNode);
-        
+
         OnChildNodeAdd(parentId,    childId, childIndex);
     }
     
@@ -211,12 +218,11 @@ public partial class EntityStore
     
     private int RemoveChildNode (int parentId, int childId)
     {
-        var parent          = new Entity(this, parentId);
-        ref var treeNode    = ref GetTreeNodeRef(parent);
-        var childIds        = treeNode.GetChildIds(this);
+        ref var parentIds   = ref GetChildIdsRef(parentId);
+        var childIds        = parentIds.GetSpan(extension.childHeap, this);
         int index           = childIds.LastIndexOf(childId); // enable O(1) if childId == last child
         if (index != -1) {
-            treeNode.childIds.RemoveAt(index, extension.childHeap, keepOrder: true);
+            parentIds.RemoveAt(index, extension.childHeap, keepOrder: true);
             return index;
         }
         throw new InvalidOperationException($"unexpected state: child id not found. parent id: {parentId}, child id: {childId}");
@@ -233,23 +239,21 @@ public partial class EntityStore
         if (newChildIds.Length == 0) { // todo fix
             return;
         }
-        ref var node = ref GetTreeNodeRef(parent);
-        node.childIds.SetArray(newChildIds, extension.childHeap);
-        SetChildParents(node, parent.Id);
+        GetChildIdsRef(parent.Id).SetArray(newChildIds, extension.childHeap);
+        SetChildParents(parent.Id);
     }
-    
+
     private void SetChildNodesWithEvents(Entity parent, ReadOnlySpan<int> newIds)
     {
-        ref var node    = ref GetTreeNodeRef(parent);
         // --- 1. Remove missing ids in new child ids.          E.g.    cur ids [2, 3, 4, 5]
         //                                                             *newIds  [6, 4, 2, 5]    => remove: 3
         //                                                              result  [2, 4, 5]
-        ChildIds_RemoveMissingIds(newIds, ref node, parent.Id);
+        ChildIds_RemoveMissingIds(newIds, parent.Id);
         
         // --- 2. Insert new ids at their specified position.   E.g.    cur ids [2, 4, 5]
         //                                                             *newIds  [6, 4, 2, 5]    => insert: 6
         //                                                              result  [6, 2, 4, 5]    childCount = newCount
-        ChildIds_InsertNewIds    (newIds, ref node, parent.Id);
+        ChildIds_InsertNewIds    (newIds, parent.Id);
         
         // --- 3. Establish specified id order.                 E.g.    cur ids [6, 2, 4, 5]
         //                                                             *newIds  [6, 4, 2, 5]
@@ -260,39 +264,41 @@ public partial class EntityStore
         // 3.3  insert range in specified order                      =>         [6, 5]          => insert 4
         //                                                                      [6, 4, 5]       => insert 2
         //                                                             childIds [6, 4, 2, 5]    finished
-        ChildIds_GetRange   (    node, newIds, out int first, out int last);
-        ChildIds_RemoveRange(ref node, first, last, parent.Id);
-        ChildIds_InsertRange(ref node, first, last, newIds, parent.Id);
-        
-        SetChildParents     (    node, parent.Id);
+        ChildIds_GetRange   (parent.Id, newIds, out int first, out int last);
+        ChildIds_RemoveRange(parent.Id, first, last);
+        ChildIds_InsertRange(parent.Id, first, last, newIds);
+
+        SetChildParents     (parent.Id);
     }
 
     // --- 1.
-    private void ChildIds_RemoveMissingIds(ReadOnlySpan<int> newIds, ref TreeNode node, int parentId)
+    private void ChildIds_RemoveMissingIds(ReadOnlySpan<int> newIds, int parentId)
     {
         var newIdSet = idBufferSet;
         newIdSet.Clear();
         foreach (int id in newIds) {
             newIdSet.Add(id);
         }
-        var childIds = node.GetChildIds(this);
-        for (int index = node.childIds.count - 1; index >= 0; index--) {
-            int id = childIds[index];
+        var heap     = extension.childHeap;
+        // read the id per iteration - RemoveAt() and the handler below can both return this block to the pool
+        for (int index = GetChildIdsRef(parentId).count - 1; index >= 0; index--) {
+            int id = GetChildIdsRef(parentId).GetAt(index, heap);
             if (newIdSet.Contains(id)) {
                 continue;
             }
-            node.childIds.RemoveAt(index, extension.childHeap, keepOrder: true);
+            GetChildIdsRef(parentId).RemoveAt(index, heap, keepOrder: true);
             RemoveTreeParent(id);
             OnChildNodeRemove(parentId, id, index);
         }
     }
 
     // --- 2.
-    private void ChildIds_InsertNewIds(ReadOnlySpan<int> newIds, ref TreeNode node, int parentId)
+    private void ChildIds_InsertNewIds(ReadOnlySpan<int> newIds, int parentId)
     {
+        var heap     = extension.childHeap;
         var curIdSet = idBufferSet;
         curIdSet.Clear();
-        foreach (int id in node.GetChildIds(this)) {
+        foreach (int id in GetChildIdsRef(parentId).GetSpan(heap, this)) {
             curIdSet.Add(id);
         }
         int newCount = newIds.Length;
@@ -304,15 +310,15 @@ public partial class EntityStore
                 continue;
             }
             // case: child ids does not contain id      => insert at specified position
-            node.childIds.InsertAt(index, id, extension.childHeap);
+            GetChildIdsRef(parentId).InsertAt(index, id, heap);
             OnChildNodeAdd(parentId, id, index);
         }
     }
 
     // --- 3.1
-    private void ChildIds_GetRange(in TreeNode node, ReadOnlySpan<int> newIds, out int first, out int last)
+    private void ChildIds_GetRange(int parentId, ReadOnlySpan<int> newIds, out int first, out int last)
     {
-        var childIds    = node.GetChildIds(this);
+        var childIds    = GetChildIdsRef(parentId).GetSpan(extension.childHeap, this);
         int count       = newIds.Length;
         first           = 0;
         for (; first < count; first++)
@@ -335,33 +341,33 @@ public partial class EntityStore
     }
     
     // --- 3.2
-    private void ChildIds_RemoveRange(ref TreeNode node, int first, int last, int parentId)
+    private void ChildIds_RemoveRange(int parentId, int first, int last)
     {
         var heap = extension.childHeap;
         for (int index = last; index >= first; index--)
         {
-            int removedId = node.childIds.GetAt(index, heap);
-            node.childIds.RemoveAt(index, heap, keepOrder: true);
+            int removedId = GetChildIdsRef(parentId).GetAt(index, heap);
+            GetChildIdsRef(parentId).RemoveAt(index, heap, keepOrder: true);
             RemoveTreeParent(removedId);
             OnChildNodeRemove(parentId, removedId, index);
         }
     }
-    
+
     // --- 3.3
-    private void ChildIds_InsertRange(ref TreeNode node, int first, int last, ReadOnlySpan<int> newIds, int parentId)
+    private void ChildIds_InsertRange(int parentId, int first, int last, ReadOnlySpan<int> newIds)
     {
         var heap = extension.childHeap;
         for (int index = first; index <= last; index++)
         {
             int addedId = newIds[index];
-            node.childIds.InsertAt(index, addedId, heap);
+            GetChildIdsRef(parentId).InsertAt(index, addedId, heap);
             OnChildNodeAdd(parentId, addedId, index);
         }
     }
 
-    private void SetChildParents(in TreeNode node, int parentId)
+    private void SetChildParents(int parentId)
     {
-        foreach (int childId in node.GetChildIds(this))
+        foreach (int childId in GetChildIdsRef(parentId).GetSpan(extension.childHeap, this))
         {
             int curParentId = GetTreeParentId(childId);
             if (curParentId == Static.NoParentId) {
@@ -651,7 +657,7 @@ public partial class EntityStore
     
     internal static ReadOnlySpan<int> GetChildIds(Entity entity)
     {
-        entity.TryGetTreeNode(out var node);
-        return node.GetChildIds(entity.store);
+        var store = entity.store;
+        return entity.GetChildIdArray().GetSpan(store.extension.childHeap, store);
     }
 }

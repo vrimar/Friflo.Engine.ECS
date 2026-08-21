@@ -105,7 +105,6 @@ A type initializer threw an exception. To determine which type, inspect the Inne
         engineTypesRegistered = true;
 
         // components
-        RegisterComponent<TreeNode>();
         RegisterComponent<Unresolved>();
 
         RegisterTag<Disabled>();

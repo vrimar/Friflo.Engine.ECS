@@ -38,10 +38,10 @@ public static class Test_Events
         entity2.AddComponent<Position>();
         entity2.AddScript(new TestScript1());
         var entity3 = store.CreateEntity(3);
-        entity2.AddChild(entity3); // fires add TreeNode component event
+        entity2.AddChild(entity3);
         entity2.EmitSignal(new MyEvent());
         entity2.DeleteEntity();
-        AreEqual(6, eventCount);
+        AreEqual(5, eventCount);
         
         entity1.EmitSignal(new MyEvent());
         EntityStoreBase.AssertEventDelegatesNull(store);

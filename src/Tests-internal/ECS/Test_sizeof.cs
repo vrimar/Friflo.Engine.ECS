@@ -16,6 +16,12 @@ public static class Test_sizeof
 #pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type ('EntityNode')
     // ------------------------------------------ Engine types ------------------------------------------
     [Test]
+    public static unsafe void Test_sizeof_ChildEntities() {
+        var size = sizeof(ChildEntities);
+        AreEqual(16, size);
+    }
+    
+    [Test]
     public static unsafe void Test_sizeof_EntityNode() {
         var size = sizeof(EntityNode);
         AreEqual(32, size);
@@ -24,7 +30,7 @@ public static class Test_sizeof
     [Test]
     public static unsafe void Test_sizeof_StoreExtension() {
         var size = sizeof(StoreExtension);
-        AreEqual(120, size);
+        AreEqual(136, size);
     }
     
     [Test]
@@ -36,11 +42,6 @@ public static class Test_sizeof
         AreEqual(8, size);
     }
     
-    [Test]
-    public static unsafe void Test_sizeof_TreeNode() {
-        var size = sizeof(TreeNode);
-        AreEqual(8, size);
-    }
     
     [Test]
     public static unsafe void Test_sizeof_RawEntity() {

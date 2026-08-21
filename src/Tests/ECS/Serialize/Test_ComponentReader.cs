@@ -32,9 +32,9 @@ public static class Test_ComponentReader
         
         var root        = converter.DataEntityToEntity(rootNode, store, out _);
         var child       = converter.DataEntityToEntity(childNode, store, out _);
-        AssertRootEntity(root, 3);
+        AssertRootEntity(root, 2);
         AssertChildEntity(child);
-        AreEqual("Components: [TreeNode, Position, Scale3]",    root.Archetype.ComponentTypes.ToString());
+        AreEqual("Components: [Position, Scale3]",    root.Archetype.ComponentTypes.ToString());
         AreEqual("Components: [Position, Scale3]",              child.Archetype.ComponentTypes.ToString());
         AreEqual(2,     store.Count);
         
@@ -42,8 +42,8 @@ public static class Test_ComponentReader
         root.GetComponent<Position>()   = default;
         root.GetComponent<Scale3>()     = default;
         root            = converter.DataEntityToEntity(rootNode, store, out _);
-        AssertRootEntity(root, 3);
-        AreEqual("Components: [TreeNode, Position, Scale3]",    root.Archetype.ComponentTypes.ToString());
+        AssertRootEntity(root, 2);
+        AreEqual("Components: [Position, Scale3]",    root.Archetype.ComponentTypes.ToString());
         AreEqual("Components: [Position, Scale3]",              child.Archetype.ComponentTypes.ToString());
         AreEqual(2,     store.Count);
         
@@ -52,7 +52,7 @@ public static class Test_ComponentReader
         child.GetComponent<Scale3>()    = default;
         child           = converter.DataEntityToEntity(childNode, store, out _);
         AssertChildEntity(child);
-        AreEqual("Components: [TreeNode, Position, Scale3]",    root.Archetype.ComponentTypes.ToString());
+        AreEqual("Components: [Position, Scale3]",    root.Archetype.ComponentTypes.ToString());
         AreEqual("Components: [Position, Scale3]",              child.Archetype.ComponentTypes.ToString());
         AreEqual(2,     store.Count);
     }
@@ -293,7 +293,7 @@ public static class Test_ComponentReader
         AreEqual(1,                 root.ChildCount);
         AreEqual(11,                root.ChildEntities.Ids[0]);
         AreEqual(componentCount,    root.Archetype.ComponentCount);
-        if (componentCount == 1) {
+        if (componentCount == 0) {
             return;
         } 
         AreEqual(1f,                root.GetComponent<Position>().x);
@@ -330,7 +330,7 @@ public static class Test_ComponentReader
         
         var root        = converter.DataEntityToEntity(rootData,  store, out _);
         var child       = converter.DataEntityToEntity(childData, store, out _);
-        AssertRootEntity(root, 1);  // 0 -> Fliox deserializer allocates memory for component structs
+        AssertRootEntity(root, 0);
         AssertChildEntity(child);
         // var type = store.GetArchetype(Signature.Get<Position, Scale3>());
         // AreEqual(2,     type.EntityCount);
@@ -342,7 +342,7 @@ public static class Test_ComponentReader
         var start       = Mem.GetAllocatedBytes();
         root            = converter.DataEntityToEntity(rootData, store, out _);
         Mem.AssertNoAlloc(start);
-        AssertRootEntity(root, 1);// 0 -> Fliox deserializer allocates memory for component structs
+        AssertRootEntity(root, 0);
         AssertChildEntity(child);
         // AreEqual(2,     type.EntityCount);
         AreEqual(2,     store.Count);
@@ -467,13 +467,12 @@ public static class Test_ComponentReader
         AreEqual(10,    entity.Id);
         AreEqual(100,   entity.ChildEntities.Count);
         var entity10 = store.GetEntityById(10);
-        entity10.TryGetComponent<TreeNode>(out var treeNode);
-        AreEqual(100,   treeNode.ChildCount);
+        AreEqual(100,   entity10.ChildCount);
         AreEqual(10,    entity10.Pid);
         var entity20    = store.GetEntityById(20);
         AreEqual(10,    store.GetInternalParentId(entity20.Id));
         AreEqual(20,    entity20.Pid);
-        var childIds = treeNode.GetChildIds(store);
+        var childIds = entity10.ChildIds;
         for (int n = 0; n < 100; n++) {
             AreEqual(n + 20, childIds[n]);
         }
@@ -497,13 +496,12 @@ public static class Test_ComponentReader
         AreEqual(1,     entity.Id);
         AreEqual(100,   entity.ChildEntities.Count);
         var entity1 = store.GetEntityById(1);
-        entity1.TryGetComponent<TreeNode>(out var treeNode1);
-        AreEqual(100,   treeNode1.ChildCount);
+        AreEqual(100,   entity1.ChildCount);
         AreEqual(10,    entity.Pid);
         var entity2     = store.GetEntityById(2);
         AreEqual(1,     store.GetInternalParentId(entity2.Id));
         AreEqual(20,    entity2.Pid);
-        var childIds = treeNode1.GetChildIds(store);
+        var childIds = entity1.ChildIds;
         for (int n = 0; n < 100; n++) {
             AreEqual(n + 2, childIds[n]);
         }

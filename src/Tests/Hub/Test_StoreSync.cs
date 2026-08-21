@@ -53,9 +53,9 @@ public static class Test_StoreSync
             
             var root        = store.GetEntityById(10);
             var child       = store.GetEntityById(11);
-            Test_ComponentReader.AssertRootEntity(root, 3);
+            Test_ComponentReader.AssertRootEntity(root, 2);
             Test_ComponentReader.AssertChildEntity(child);
-            AreEqual("Components: [TreeNode, Position, Scale3]",    root.Archetype.ComponentTypes.ToString());
+            AreEqual("Components: [Position, Scale3]",    root.Archetype.ComponentTypes.ToString());
             AreEqual("Components: [Position, Scale3]",              child.Archetype.ComponentTypes.ToString());
             AreEqual(2,     store.Count);
         }
@@ -72,9 +72,9 @@ public static class Test_StoreSync
             
             var root        = store.GetEntityById(10);
             var child       = store.GetEntityById(11);
-            Test_ComponentReader.AssertRootEntity(root, 3);
+            Test_ComponentReader.AssertRootEntity(root, 2);
             Test_ComponentReader.AssertChildEntity(child);
-            AreEqual("Components: [TreeNode, Position, Scale3]",    root.Archetype.ComponentTypes.ToString());
+            AreEqual("Components: [Position, Scale3]",    root.Archetype.ComponentTypes.ToString());
             AreEqual("Components: [Position, Scale3]",              child.Archetype.ComponentTypes.ToString());
             AreEqual(2,     store.Count);
         }
@@ -102,7 +102,7 @@ public static class Test_StoreSync
             
             var root = store.GetEntityById(10);
             IsTrue(         root.HasComponent<Position>());
-            AreEqual("Components: [TreeNode, Position]",    root.Archetype.ComponentTypes.ToString());
+            AreEqual("Components: [Position]",    root.Archetype.ComponentTypes.ToString());
             AreEqual(1,     store.Count);
         }
     }
@@ -214,7 +214,7 @@ public static class Test_StoreSync
         AreEqual(2, store.Count);
         var root        = store.GetEntityById(10);
         var child       = store.GetEntityById(11);
-        Test_ComponentReader.AssertRootEntity(root, 3);
+        Test_ComponentReader.AssertRootEntity(root, 2);
         Test_ComponentReader.AssertChildEntity(child);
         
         client.entities.Delete(10L);
@@ -244,7 +244,7 @@ public static class Test_StoreSync
         AreEqual(2, store.Count);
         var root        = store.GetEntityById(10);
         var child       = store.GetEntityById(11);
-        Test_ComponentReader.AssertRootEntity(root, 3);
+        Test_ComponentReader.AssertRootEntity(root, 2);
         Test_ComponentReader.AssertChildEntity(child);
         
         client.entities.Delete(10L);

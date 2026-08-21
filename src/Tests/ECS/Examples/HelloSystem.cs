@@ -2,8 +2,8 @@
 using System.Numerics;
 using Friflo.Engine.ECS;
 using Friflo.Engine.ECS.Systems;
-using Tests.ECS;
 using NUnit.Framework;
+using Tests.ECS;
 
 // ReSharper disable UnusedType.Local
 // ReSharper disable ArrangeTypeMemberModifiers

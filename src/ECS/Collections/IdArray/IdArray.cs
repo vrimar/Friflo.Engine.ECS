@@ -207,11 +207,10 @@ internal static class IdArrayExtensions {
         array = new IdArray(newStart, newCount);
     }
     
-    /*
     internal static void Clear(this ref IdArray array, IdArrayHeap heap)
     {
         int count = array.count;
-        if (count <= 1) {   // index is 0
+        if (count <= 1) {   // count == 1 stores the id inline - nothing pooled to return
             array = default;
             return;
         }
@@ -219,7 +218,7 @@ internal static class IdArrayExtensions {
         var curPool         = heap.GetPool(curPoolIndex);
         curPool.DeleteArray(array.start, out _);
         array = default;
-    } */
+    }
 
     internal static void SetAt(this ref IdArray array, int positionIndex, int value, IdArrayHeap heap)
     {

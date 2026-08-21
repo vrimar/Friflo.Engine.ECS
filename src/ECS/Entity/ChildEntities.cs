@@ -15,44 +15,42 @@ using Browse = System.Diagnostics.DebuggerBrowsableAttribute;
 namespace Friflo.Engine.ECS;
 
 /// <summary>
-/// Return the child entities of an <see cref="Entity"/>.<br/>
-/// To iterate all entities with child entities use <see cref="TreeNode"/> in a <c>Query()</c>.
+/// Return the child entities of an <see cref="Entity"/>.
 /// </summary>
 [DebuggerTypeProxy(typeof(ChildEntitiesDebugView))]
 public readonly struct ChildEntities : IEnumerable<Entity>
 {
 #region properties
-    public          int                 Count           => node.childIds.count;
-    public          ReadOnlySpan<int>   Ids             => node.GetChildIds(store);
-    
-    public          Entity              this[int index] => new Entity(store, node.childIds.GetAt(index, store.extension.childHeap));
+    public          int                 Count           => ChildIds.count;
+    public          ReadOnlySpan<int>   Ids             => ChildIds.GetSpan(store.extension.childHeap, store);
+
+    public          Entity              this[int index] => new Entity(store, ChildIds.GetAt(index, store.extension.childHeap));
     public override string              ToString()      => $"Entity[{Count}]";
     #endregion
-    
+
 #region fields
-    [Browse(Never)]     internal readonly   TreeNode            node;   //  8
-    [Browse(Never)]     internal readonly   EntityStore         store;  //  8
+    [Browse(Never)]     internal readonly   Entity              entity;     // 16
     #endregion
-    
+
+    internal            EntityStore         store           => entity.store;
+
+    /// Resolved per access. An <see cref="IdArray"/> snapshot would survive its owner and read a
+    /// recycled block, i.e. another entity's children.
+    internal        IdArray             ChildIds        => entity.GetChildIdArray();
+
     // --- IEnumerable<>
     IEnumerator<Entity> IEnumerable<Entity>.GetEnumerator() => new ChildEnumerator(this);
-    
+
     // --- IEnumerable
     IEnumerator                 IEnumerable.GetEnumerator() => new ChildEnumerator(this);
-    
+
     // --- new
     public ChildEnumerator                  GetEnumerator() => new ChildEnumerator(this);
 
     internal ChildEntities(Entity entity) {
-        store = entity.store;
-        entity.TryGetTreeNode(out node);
+        this.entity = entity;
     }
-    
-    internal ChildEntities(EntityStore store, TreeNode node) {
-        this.store  = store;
-        this.node   = node;
-    }
-    
+
     public void ToArray(Entity[] array) {
         var ids = Ids;
         for (int n = 0; n < ids.Length; n++) {
@@ -83,7 +81,7 @@ public struct ChildEnumerator : IEnumerator<Entity>
     #endregion
     
     internal ChildEnumerator(in ChildEntities childEntities) {
-        childIds    = childEntities.node.childIds;
+        childIds    = childEntities.ChildIds;
         store       = childEntities.store;
         heap        = store.extension.childHeap;
     }
