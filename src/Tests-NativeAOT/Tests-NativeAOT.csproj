@@ -6,7 +6,7 @@
         <!-- <DefineConstants Condition="'$(PublishAot)' == 'true'">
             $(DefineConstants);IS_NATIVE_AOT
         </DefineConstants> -->
-        <TargetFramework>net8.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>disable</ImplicitUsings>
         <Nullable>disable</Nullable>
         <GenerateProgramFile>true</GenerateProgramFile>

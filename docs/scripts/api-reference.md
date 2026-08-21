@@ -42,6 +42,6 @@ Generate Markdown using config file `api-reference.json`
 See default config file [defaultSettings.json](https://github.com/ap0llo/mddocs/blob/master/src/MdDocs.Common/Configuration/defaultSettings.json)
 
 ```
-cd Tests/bin/Release/net8.0
+cd Tests/.bin/Release/net10.0
 mddocs apireference --assemblies "CoFuse.Engine.ECS.dll" --configurationFilePath ../../../../scripts/api-reference.json
 ```

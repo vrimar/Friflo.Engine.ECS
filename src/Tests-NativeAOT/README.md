@@ -14,13 +14,13 @@ cd src/Tests-NativeAOT
 Debug
 ```
 dotnet publish --runtime win-x64 -c DEBUG
-bin\Debug\net8.0\win-x64\publish\Tests-NativeAOT.exe
+bin\Debug\net10.0\win-x64\publish\Tests-NativeAOT.exe
 ```
 
 Release
 ```
 dotnet publish --runtime win-x64
-bin\Release\net8.0\win-x64\publish\Tests-NativeAOT.exe
+bin\Release\net10.0\win-x64\publish\Tests-NativeAOT.exe
 ```
 
 ## Make library trimmable
