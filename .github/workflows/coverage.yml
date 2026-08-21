@@ -2,7 +2,7 @@ name: Engine coverage
 
 on:
   push:
-    branches: [ main ]
+    branches: [ fuse ]
 
 jobs:
   build:

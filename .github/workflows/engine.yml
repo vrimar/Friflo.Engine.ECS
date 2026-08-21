@@ -2,9 +2,9 @@ name: CI-Engine
 
 on:
   push:
-    branches: [ main ]
+    branches: [ fuse ]
   pull_request:
-    branches: [ main ]
+    branches: [ fuse ]
 
 jobs:
   build:
