@@ -20,7 +20,7 @@
 
     <Title>CoFuse Engine ECS</Title>
     <Authors>Ullrich Praetz, vrimar</Authors>
-    <Description>Entity Component System - ECS - optimized for performance and cache locality. Fork of friflo/Friflo.Engine.ECS by Ullrich Praetz, widening the EntityNode owner mask so more than 31 indexed component and relation types can be registered, and rejecting schemas that exceed the limit instead of silently corrupting entity deletion.</Description>
+    <Description>Entity Component System - ECS - optimized for performance and cache locality. Fork of friflo/Friflo.Engine.ECS by Ullrich Praetz. Child entities are stored in a store side table, so AddChild is no longer a structural change and does not move the parent to another archetype. The EntityNode owner mask is widened to long so more than 31 indexed component and relation types can be registered, and schemas exceeding the component type or owner mask limits are rejected instead of silently corrupting entity deletion. Fixes 30 defects in the entity tree, component index, relations and serializer. Built-in component types and the query marker attributes are removed - see CHANGELOG.md.</Description>
     <Copyright>Ullrich Praetz</Copyright>
     <PackageProjectUrl>https://github.com/vrimar/Friflo.Engine.ECS</PackageProjectUrl>
     <RepositoryUrl>https://github.com/vrimar/Friflo.Engine.ECS</RepositoryUrl>
@@ -43,6 +43,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\CHANGELOG.md" Pack="true" PackagePath="\" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
   </ItemGroup>
 
