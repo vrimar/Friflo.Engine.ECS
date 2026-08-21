@@ -4,7 +4,7 @@
         <!-- Match assembly file paths: -->
         <ModulePaths>
             <Include>
-                <ModulePath>Friflo.Engine.ECS.dll</ModulePath>
+                <ModulePath>CoFuse.Engine.ECS.dll</ModulePath>
                 <!-- Add more ModulePath nodes here. -->
             </Include>
         </ModulePaths>

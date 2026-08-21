@@ -6,23 +6,24 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <RootNamespace>Friflo.Engine.ECS</RootNamespace>
-    <AssemblyName>Friflo.Engine.ECS</AssemblyName>
+    <AssemblyName>CoFuse.Engine.ECS</AssemblyName>
     <LangVersion>14.0</LangVersion>
       
     <IsTrimmable>true</IsTrimmable>
     <IsAotCompatible>true</IsAotCompatible>
 
     <!-- packaging -->
+    <PackageId>CoFuse.Engine.ECS</PackageId>
     <PackageVersion>0.0.0</PackageVersion>
     <AssemblyVersion>0.0.0.0</AssemblyVersion>
     <FileVersion>0.0.0.0</FileVersion>
 
-    <Title>Friflo Engine ECS</Title>
-    <Authors>Ullrich Praetz</Authors>
-    <Description>Entity Component System - ECS - optimized for performance and cache locality</Description>
+    <Title>CoFuse Engine ECS</Title>
+    <Authors>Ullrich Praetz, vrimar</Authors>
+    <Description>Entity Component System - ECS - optimized for performance and cache locality. Fork of friflo/Friflo.Engine.ECS by Ullrich Praetz, widening the EntityNode owner mask so more than 31 indexed component and relation types can be registered, and rejecting schemas that exceed the limit instead of silently corrupting entity deletion.</Description>
     <Copyright>Ullrich Praetz</Copyright>
-    <PackageProjectUrl>https://github.com/friflo/Friflo.Engine.ECS</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/friflo/Friflo.Engine.ECS</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/vrimar/Friflo.Engine.ECS</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/vrimar/Friflo.Engine.ECS</RepositoryUrl>
     <PackageTags>ecs, entity-component-system, gamedev, game-engine, unity, godot, monogame, fna, stride, flax, dots, entt, flecs</PackageTags>
     <PackageLicenseUrl></PackageLicenseUrl>
     <PackageIconUrl></PackageIconUrl>

@@ -28,7 +28,7 @@ public static class Test_NativeAOT
         AreEqual(2, dependants.Length);
         
         var engine  = dependants[0];
-        AreEqual("Friflo.Engine.ECS",   engine.AssemblyName);
+        AreEqual("CoFuse.Engine.ECS",   engine.AssemblyName);
         AreEqual(9,                     engine.Types.Length);
         
         var tests = dependants[1];

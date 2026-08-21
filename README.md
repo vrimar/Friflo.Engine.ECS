@@ -6,9 +6,9 @@
 
 <div align="center">
 
-[![nuget](https://img.shields.io/nuget/v/Friflo.Engine.ECS?logo=nuget&logoColor=white)](https://www.nuget.org/packages/Friflo.Engine.ECS)
-[![codecov](https://img.shields.io/codecov/c/gh/friflo/Friflo.Engine.ECS?logo=codecov&logoColor=white&label=codecov)](https://app.codecov.io/gh/friflo/Friflo.Engine.ECS/tree/main/src/ECS)
-[![CI-Engine](https://img.shields.io/github/actions/workflow/status/friflo/Friflo.Engine.ECS/.github%2Fworkflows%2Fengine.yml?logo=github-actions&logoColor=white&label=CI)](https://github.com/friflo/Friflo.Engine.ECS/actions/workflows/engine.yml)
+[![nuget](https://img.shields.io/nuget/v/CoFuse.Engine.ECS?logo=nuget&logoColor=white)](https://www.nuget.org/packages/CoFuse.Engine.ECS)
+[![codecov](https://img.shields.io/codecov/c/gh/vrimar/Friflo.Engine.ECS/fuse?logo=codecov&logoColor=white&label=codecov)](https://app.codecov.io/gh/vrimar/Friflo.Engine.ECS/tree/fuse/src/ECS)
+[![CI-Engine](https://img.shields.io/github/actions/workflow/status/vrimar/Friflo.Engine.ECS/.github%2Fworkflows%2Fengine.yml?branch=fuse&logo=github-actions&logoColor=white&label=CI)](https://github.com/vrimar/Friflo.Engine.ECS/actions/workflows/engine.yml)
 [![Demos](https://img.shields.io/badge/Demos-22aa22?logo=github&logoColor=white)](https://github.com/friflo/Friflo.Engine.ECS-Demos)
 [![C# API](https://img.shields.io/badge/C%23%20API-22aaaa?logo=github&logoColor=white)](https://github.com/friflo/Friflo.Engine-docs)
 [![Discord](https://img.shields.io/discord/1209072279904976896?label=Discord&logo=discord&logoColor=white&labelColor=5E6AE9&color=4149A1)](https://discord.gg/nFfrhgQkb8)
@@ -94,9 +94,9 @@ Generates high-performance query code and reduces boilerplate code to a minimum.
 
 
 
-Get package on [nuget](https://www.nuget.org/packages/Friflo.Engine.ECS/) or use the dotnet CLI.
+Get package on [nuget](https://www.nuget.org/packages/CoFuse.Engine.ECS/) or use the dotnet CLI.
 ```
-dotnet add package Friflo.Engine.ECS
+dotnet add package CoFuse.Engine.ECS
 ```
 
 

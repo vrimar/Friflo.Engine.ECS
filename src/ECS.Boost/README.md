@@ -1,19 +1,19 @@
 ﻿[![friflo ECS](https://raw.githubusercontent.com/friflo/Friflo.Engine.ECS/main/docs/images/friflo-ECS.svg)](https://github.com/friflo/Friflo.Engine.ECS)        ![splash](https://raw.githubusercontent.com/friflo/Friflo.Engine.ECS/main/docs/images/paint-splatter.svg)
 
 
-[![Wiki](https://img.shields.io/badge/GitHub-grey?logo=github&logoColor=white)](https://github.com/friflo/Friflo.Engine.ECS)
-[![nuget](https://img.shields.io/nuget/v/Friflo.Engine.ECS?logo=nuget&logoColor=white)](https://www.nuget.org/packages/Friflo.Engine.ECS)
-[![codecov](https://img.shields.io/codecov/c/gh/friflo/Friflo.Engine.ECS?logo=codecov&logoColor=white&label=codecov)](https://app.codecov.io/gh/friflo/Friflo.Engine.ECS/tree/main/src/ECS)
+[![Wiki](https://img.shields.io/badge/GitHub-grey?logo=github&logoColor=white)](https://github.com/vrimar/Friflo.Engine.ECS)
+[![nuget](https://img.shields.io/nuget/v/CoFuse.Engine.ECS.Boost?logo=nuget&logoColor=white)](https://www.nuget.org/packages/CoFuse.Engine.ECS.Boost)
+[![codecov](https://img.shields.io/codecov/c/gh/vrimar/Friflo.Engine.ECS/fuse?logo=codecov&logoColor=white&label=codecov)](https://app.codecov.io/gh/vrimar/Friflo.Engine.ECS/tree/fuse/src/ECS)
 [![C# API](https://img.shields.io/badge/C%23%20API-22aaaa?logo=github&logoColor=white)](https://github.com/friflo/Friflo.Engine-docs)
 [![Discord](https://img.shields.io/badge/Discord-5865F2?logo=discord&logoColor=white)](https://discord.gg/nFfrhgQkb8)
 [![Wiki](https://img.shields.io/badge/Wiki-A200FF?logo=gitbook&logoColor=white)](https://friflo.gitbook.io/friflo.engine.ecs)
 
 
-# Friflo.Engine.ECS.Boost
+# CoFuse.Engine.ECS.Boost
 
-Extension for [Friflo.Engine.ECS](https://www.nuget.org/packages/Friflo.Engine.ECS/) to boost performance of query execution.
+Extension for [CoFuse.Engine.ECS](https://www.nuget.org/packages/CoFuse.Engine.ECS/) to boost performance of query execution.
 
-**Friflo.Engine.ECS** is using only **verifiably safe code**.  
+**CoFuse.Engine.ECS** is using only **verifiably safe code**.  
 Using [unsafe code](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/unsafe-code)
 may lead to access violations errors in case of bugs caused by *unsafe code*.  
 

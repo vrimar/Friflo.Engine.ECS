@@ -43,5 +43,5 @@ See default config file [defaultSettings.json](https://github.com/ap0llo/mddocs/
 
 ```
 cd Tests/bin/Release/net8.0
-mddocs apireference --assemblies "Friflo.Engine.ECS.dll" --configurationFilePath ../../../../scripts/api-reference.json
+mddocs apireference --assemblies "CoFuse.Engine.ECS.dll" --configurationFilePath ../../../../scripts/api-reference.json
 ```
