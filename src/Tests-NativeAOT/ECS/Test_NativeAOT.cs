@@ -142,6 +142,7 @@ public class Test_AOT
     [TestMethod]
     public void Test_AOT_LinkComponents()
     {
+        CreateSchema();
         var store   = new EntityStore();
 
         var entity1 = store.CreateEntity(1);                            // link components
@@ -168,6 +169,7 @@ public class Test_AOT
     [TestMethod]
     public void Test_AOT_LinkRelations()
     {
+        CreateSchema();
         var store   = new EntityStore();
     
         var entity1 = store.CreateEntity(1);                          // link relations
@@ -198,6 +200,7 @@ public class Test_AOT
     [TestMethod]
     public void Test_AOT_Relations()
     {
+        CreateSchema();
         var store   = new EntityStore();
         var entity  = store.CreateEntity();
     
