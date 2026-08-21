@@ -12,6 +12,22 @@ namespace Tests.ECS {
 public static class Test_Regressions
 {
     [Test]
+    public static void InsertChild_NegativeIndex_DoesNotMutate()
+    {
+        var store = new EntityStore();
+        var p     = store.CreateEntity();
+        var q     = store.CreateEntity();
+        var c     = store.CreateEntity();
+        q.AddChild(c);
+
+        Throws<IndexOutOfRangeException>(() => p.InsertChild(-1, c));
+
+        AreEqual(1, q.ChildCount);
+        AreEqual(0, p.ChildCount);
+        AreEqual(q.Id, c.Parent.Id);
+    }
+
+    [Test]
     public static void ChildEntities_HeldAcrossDelete_DoesNotReadRecycledBlock()
     {
         var store  = new EntityStore();

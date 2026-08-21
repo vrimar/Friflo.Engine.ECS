@@ -159,10 +159,12 @@ public partial class EntityStore
         if (WouldCreateCycle(parentId, childId)) {
             throw OperationCycleException(parentId, childId);
         }
-        if (childIndex > GetChildIdsRef(parentId).count) {
+        var curParentId = GetTreeParentId(childId);
+        // a child already under this parent is removed before re-insertion, so the list it lands in is one shorter
+        var maxIndex    = GetChildIdsRef(parentId).count - (curParentId == parentId ? 1 : 0);
+        if (childIndex < 0 || childIndex > maxIndex) {
             throw new IndexOutOfRangeException();
         }
-        var curParentId = GetTreeParentId(childId);
         if (HasParent(curParentId))
         {
             int curIndex;
