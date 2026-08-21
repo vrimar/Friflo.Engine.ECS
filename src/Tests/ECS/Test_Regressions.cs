@@ -303,6 +303,151 @@ public static class Test_Regressions
             AreEqual(0,     parent.ChildCount, $"child count: {count}");
         }
     }
+
+    [Test]
+    public static void DataEntityToEntity_EmptyChildren_ClearsExistingChildren()
+    {
+        foreach (var withHandler in new [] { false, true }) {
+            var store = new EntityStore(PidType.UsePidAsId);
+            if (withHandler) {
+                store.OnChildEntitiesChanged += _ => { };
+            }
+            var converter = new EntityConverter();
+            converter.DataEntityToEntity(new DataEntity { pid = 1, children = new List<long> { 2 } }, store, out _);
+            converter.DataEntityToEntity(new DataEntity { pid = 2 },                                  store, out _);
+            converter.DataEntityToEntity(new DataEntity { pid = 1, children = new List<long>() },     store, out _);
+
+            AreEqual(0, store.GetEntityById(1).ChildCount, $"handler: {withHandler}");
+        }
+    }
+
+    [Test]
+    public static void DataEntityToEntity_DroppedChild_ClearsItsParent()
+    {
+        var store     = new EntityStore(PidType.UsePidAsId);
+        var converter = new EntityConverter();
+        converter.DataEntityToEntity(new DataEntity { pid = 1, children = new List<long> { 2, 3 } }, store, out _);
+        converter.DataEntityToEntity(new DataEntity { pid = 2 }, store, out _);
+        converter.DataEntityToEntity(new DataEntity { pid = 3 }, store, out _);
+        converter.DataEntityToEntity(new DataEntity { pid = 1, children = new List<long> { 2 } },    store, out _);
+
+        var parent = store.GetEntityById(1);
+        var lost   = store.GetEntityById(3);
+        AreEqual(1, parent.ChildCount);
+        IsTrue  (lost.Parent.IsNull);
+        DoesNotThrow(() => lost.DeleteEntity());
+    }
+
+    [Test]
+    public static void ReadIntoStore_ShrinkingChildren_ClearsDroppedParent()
+    {
+        var store      = new EntityStore();
+        var serializer = new EntitySerializer();
+        serializer.ReadIntoStore(store, Serialize.Test_Serializer.StringAsStream("[{\"id\":1,\"children\":[2,3]},{\"id\":2},{\"id\":3}]"));
+        serializer.ReadIntoStore(store, Serialize.Test_Serializer.StringAsStream("[{\"id\":1,\"children\":[2]}]"));
+
+        AreEqual(1, store.GetEntityById(1).ChildCount);
+        IsTrue  (store.GetEntityById(3).Parent.IsNull);
+    }
+
+    [Test]
+    public static void DataEntityToEntity_DuplicateChildId_Throws()
+    {
+        foreach (var withHandler in new [] { false, true }) {
+            var store = new EntityStore(PidType.UsePidAsId);
+            if (withHandler) {
+                store.OnChildEntitiesChanged += _ => { };
+            }
+            var converter = new EntityConverter();
+            converter.DataEntityToEntity(new DataEntity { pid = 2 }, store, out _);
+            converter.DataEntityToEntity(new DataEntity { pid = 1, children = new List<long> { 2 } }, store, out _);
+
+            var e = Throws<InvalidOperationException>(() =>
+                converter.DataEntityToEntity(new DataEntity { pid = 1, children = new List<long> { 2, 2 } }, store, out _));
+            AreEqual("duplicate child id: 2. parent id: 1", e!.Message);
+        }
+    }
+
+    [Test]
+    public static void DeleteEntity_ChildWithoutParentMapSlot_DoesNotThrow()
+    {
+        var store     = new EntityStore(PidType.UsePidAsId);
+        var converter = new EntityConverter();
+        converter.DataEntityToEntity(new DataEntity { pid = 1, children = new List<long> { 300 } }, store, out _);
+        Throws<InvalidOperationException>(() =>
+            converter.DataEntityToEntity(new DataEntity { pid = 5, children = new List<long> { 300, 400 } }, store, out _));
+
+        var entity = store.GetEntityById(5);
+        AreEqual(2, entity.ChildCount);
+        DoesNotThrow(() => entity.DeleteEntity());
+    }
+
+    [Test]
+    public static void InsertChild_HandlerEmptiesTargetParent_LeavesConsistentState()
+    {
+        var store  = new EntityStore();
+        var parent = store.CreateEntity();
+        var child0 = store.CreateEntity();
+        var child1 = store.CreateEntity();
+        var other  = store.CreateEntity();
+        var moved  = store.CreateEntity();
+        parent.AddChild(child0);
+        parent.AddChild(child1);
+        other .AddChild(moved);
+
+        bool fired = false;
+        store.OnChildEntitiesChanged += args => {
+            if (fired || args.Action != ChildEntitiesChangedAction.Remove) return;
+            fired = true;
+            parent.RemoveChild(child0);
+            parent.RemoveChild(child1);
+        };
+        parent.InsertChild(2, moved);
+
+        AreEqual(parent.Id, moved.Parent.Id);
+        AreEqual(0, parent.ChildIds.IndexOf(moved.Id));
+        DoesNotThrow(() => moved.DeleteEntity());
+    }
+
+    [Test]
+    public static void AddChild_HandlerCreatesCycle_TreeWalkTerminates()
+    {
+        var store  = new EntityStore();
+        var grand  = store.CreateEntity();
+        var parent = store.CreateEntity();
+        var child  = store.CreateEntity();
+        var other  = store.CreateEntity();
+        grand.AddChild(parent);
+        other.AddChild(child);
+
+        bool fired = false;
+        store.OnChildEntitiesChanged += args => {
+            if (fired || args.Action != ChildEntitiesChangedAction.Remove) return;
+            fired = true;
+            child.AddChild(grand);
+        };
+        parent.AddChild(child);
+
+        var walk = System.Threading.Tasks.Task.Run(() =>
+            Throws<InvalidOperationException>(() => { var _ = child.TreeMembership; }));
+        IsTrue(walk.Wait(TimeSpan.FromSeconds(5)), "walk up the entity tree did not terminate");
+    }
+
+    [Test]
+    public static void DataEntityToEntity_ReentrantDeserialize_KeepsOuterChildIds()
+    {
+        var store     = new EntityStore(PidType.UsePidAsId);
+        var converter = new EntityConverter();
+        int depth     = 0;
+        store.OnChildEntitiesChanged += _ => {
+            if (depth++ > 0) return;
+            converter.DataEntityToEntity(new DataEntity { pid = 10, children = new List<long> { 11, 12, 13 } }, store, out string _);
+        };
+        converter.DataEntityToEntity(new DataEntity { pid = 1, children = new List<long> { 2, 3, 4 } }, store, out var error);
+
+        IsNull(error);
+        AreEqual(new [] { 2, 3, 4 }, store.GetEntityById(1).ChildIds.ToArray());
+    }
 }
 
 }

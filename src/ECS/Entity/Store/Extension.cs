@@ -33,6 +33,7 @@ internal partial struct StoreExtension
     internal                            int[]                   parentMap;                  //  8
     internal                            IdArray[]               childMap;                   //  8
     internal readonly                   IdArrayHeap             childHeap;                  //  8
+    internal                            int[]                   childIdsBuffer;             //  8
     // --- events
     internal    Action                <ChildEntitiesChanged>    childEntitiesChanged;       //  8   - fires event on add, insert, remove or delete an Entity
     internal    Dictionary<int, Action<ChildEntitiesChanged>>   entityChildEntitiesChanged; //  8
@@ -64,9 +65,10 @@ internal partial struct StoreExtension
     
     internal StoreExtension(PidType pidType)
     {
-        parentMap   = Array.Empty<int>();
-        childMap    = Array.Empty<IdArray>();
-        childHeap   = new IdArrayHeap();
+        parentMap       = Array.Empty<int>();
+        childMap        = Array.Empty<IdArray>();
+        childHeap       = new IdArrayHeap();
+        childIdsBuffer  = Array.Empty<int>();
         if (pidType == PidType.RandomPids) {
             randPid  = new Random();
             pid2Id   = new Dictionary<long, int>();

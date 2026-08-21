@@ -85,7 +85,10 @@ public partial class EntityStore
     }
     
     private void RemoveTreeParent(int entityId) {
-        extension.parentMap[entityId] = Static.NoParentId;
+        var parentMap = extension.parentMap;
+        if (entityId < parentMap.Length) {
+            parentMap[entityId] = Static.NoParentId;
+        }
     }
     
     internal void SetTreeParent(int entityId, int parentId)
@@ -97,9 +100,12 @@ public partial class EntityStore
         parentMap[entityId] = parentId;
     }
     
+    // a re-entrant handler can close a parent cycle, which an unbounded walk up the tree spins on forever
+    private int MaxTreeDepth => extension.parentMap.Length;
+
     internal TreeMembership  GetTreeMembership(int id)
     {
-        while (true)
+        for (int depth = MaxTreeDepth; depth >= 0; depth--)
         {
             var parentId = GetTreeParentId(id);
             if (parentId == Static.NoParentId) {
@@ -107,14 +113,15 @@ public partial class EntityStore
             }
             id = parentId;
         }
+        throw CycleException("cycle in entity tree: ", id, id);
     }
-    
+
     private bool WouldCreateCycle(int id, int parentId)
     {
         if (id == parentId) {
             return true;
         }
-        while (true) {
+        for (int depth = MaxTreeDepth; depth >= 0; depth--) {
             var parent = GetTreeParentId(id);
             if (parent == Static.NoParentId) {
                 return false;
@@ -124,6 +131,7 @@ public partial class EntityStore
             }
             id = parent;
         }
+        return true;
     }
     #endregion
     
@@ -186,12 +194,14 @@ public partial class EntityStore
             curIndex = RemoveChildNode(curParentId, childId);
             OnChildNodeRemove(curParentId, childId, curIndex);
 
+            childIndex = ClampChildIndex(parentId, childIndex);
             GetChildIdsRef(parentId).InsertAt(childIndex, childId, extension.childHeap);
             OnChildNodeAdd (parentId,            childId, childIndex);
             return;
         }
     InsertNode:
         // --- insert entity with given id as child to its parent
+        childIndex = ClampChildIndex(parentId, childIndex);
         SetTreeParent(childId, parentId);
         GetChildIdsRef(parentId).InsertAt(childIndex, childId, extension.childHeap);
         // SetTreeFlags(nodes, childId, nodes[parentId].flags & NodeFlags.TreeNode);
@@ -199,6 +209,13 @@ public partial class EntityStore
         OnChildNodeAdd(parentId,    childId, childIndex);
     }
     
+    // the index was validated before the remove handlers ran - one of them may have shrunk this parent
+    private int ClampChildIndex(int parentId, int childIndex)
+    {
+        int count = GetChildIdsRef(parentId).count;
+        return childIndex > count ? count : childIndex;
+    }
+
     internal bool RemoveChild (int parentId, int childId)
     {
         int curParentId = GetTreeParentId(childId);
@@ -233,20 +250,55 @@ public partial class EntityStore
     
     private void SetChildNodes(Entity parent, ReadOnlySpan<int> newChildIds)
     {
+        CheckDistinctChildIds(parent.Id, newChildIds);
         if (extension.childEntitiesChanged != null) {
             // case: childNodesChanged handler exists       => assign new child ids one by one to send events
             SetChildNodesWithEvents(parent, newChildIds);
             return;
         }
         // case: no registered childNodesChanged handlers   => assign new child ids at once
-        if (newChildIds.Length == 0) { // todo fix
-            return;
-        }
+        ClearParentOfMissingIds(parent.Id, newChildIds);
         GetChildIdsRef(parent.Id).SetArray(newChildIds, extension.childHeap);
         SetChildParents(parent.Id);
     }
 
+    private static void CheckDistinctChildIds(int parentId, ReadOnlySpan<int> newChildIds)
+    {
+        for (int n = 1; n < newChildIds.Length; n++) {
+            if (newChildIds.Slice(0, n).IndexOf(newChildIds[n]) != -1) {
+                throw new InvalidOperationException($"duplicate child id: {newChildIds[n]}. parent id: {parentId}");
+            }
+        }
+    }
+
+    // SetArray() replaces the whole child list, so ids dropped from it keep pointing at this parent
+    private void ClearParentOfMissingIds(int parentId, ReadOnlySpan<int> newChildIds)
+    {
+        foreach (int id in GetChildIdsRef(parentId).GetSpan(extension.childHeap, this)) {
+            if (newChildIds.IndexOf(id) == -1) {
+                RemoveTreeParent(id);
+            }
+        }
+    }
+
     private void SetChildNodesWithEvents(Entity parent, ReadOnlySpan<int> newIds)
+    {
+        // the caller's span aliases the store-wide idBuffer, which a handler below can refill
+        var buffer = extension.childIdsBuffer;
+        if (buffer.Length < newIds.Length) {
+            buffer = new int[newIds.Length];
+        }
+        extension.childIdsBuffer = Array.Empty<int>(); // a handler below may re-enter
+        try {
+            newIds.CopyTo(buffer);
+            SetChildNodesWithEventsInternal(parent, new ReadOnlySpan<int>(buffer, 0, newIds.Length));
+        }
+        finally {
+            extension.childIdsBuffer = buffer;
+        }
+    }
+
+    private void SetChildNodesWithEventsInternal(Entity parent, ReadOnlySpan<int> newIds)
     {
         // --- 1. Remove missing ids in new child ids.          E.g.    cur ids [2, 3, 4, 5]
         //                                                             *newIds  [6, 4, 2, 5]    => remove: 3
@@ -410,9 +462,9 @@ public partial class EntityStore
             exception = new InvalidOperationException($"self reference in entity: {id}");
             return true;
         }
-        // --- iterate all parents of id and fail if id in these parents 
+        // --- iterate all parents of id and fail if id in these parents
         int cur         = id;
-        while (true) {
+        for (int depth = MaxTreeDepth; depth >= 0; depth--) {
             cur = GetTreeParentId(cur);
             if (cur == Static.NoParentId) {
                 exception = null;
@@ -423,6 +475,8 @@ public partial class EntityStore
                 return true;
             }
         }
+        exception = CycleException("cycle in entity children: ", id, id);
+        return true;
     }
     
     private InvalidOperationException OperationCycleException(int id, int other) {
@@ -438,7 +492,7 @@ public partial class EntityStore
         var sb = new StringBuilder();
         sb.Append(message);
         sb.Append(id);
-        while (true)
+        for (int depth = MaxTreeDepth; depth >= 0; depth--)
         {
             cur = GetTreeParentId(cur);
             sb.Append(" -> ");
