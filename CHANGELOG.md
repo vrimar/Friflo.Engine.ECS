@@ -6,6 +6,23 @@ This project is a fork of [friflo/Friflo.Engine.ECS](https://github.com/friflo/F
 by Ullrich Praetz. Versions carry a `-fuse.N` suffix; the major version tracks this
 fork's own compatibility line, not upstream's.
 
+## 4.1.0-fuse.1
+
+### Added
+
+- **The archetype capacity floor is a per-store setting.** `new EntityStore(minArchetypeCapacity)`
+  and `new EntityStore(pidType, minArchetypeCapacity)` set the capacity every archetype of that
+  store reserves and the step it grows and shrinks by; `EntityStoreBase.MinArchetypeCapacity`
+  reads it back. It must be a power of two `>= 64` — capacities are reached by doubling and by
+  rounding up to a power of two, and below 64 the `Chunk<T>.AsSpan512` padding would read past
+  the component array.
+
+  Stores built with the existing constructors are unchanged: the floor defaults to
+  `ArchetypeUtils.MinCapacity` (512). A low floor pays off when a process runs many stores that
+  each hold few entities per archetype — a store keeps every archetype it has touched for its own
+  life, so an archetype holding one entity still reserves the floor. A store with many entities
+  per archetype should keep the default and pay fewer array copies.
+
 ## 4.0.0-fuse.1
 
 Breaking release. Removes seven built-in component types and the query marker

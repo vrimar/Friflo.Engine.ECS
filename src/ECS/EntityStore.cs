@@ -208,8 +208,15 @@ public sealed partial class EntityStore : EntityStoreBase
     
 #region initialize
     public EntityStore() : this (PidType.UsePidAsId) { }
-    
-    public EntityStore(PidType pidType)
+
+    /// <param name="minArchetypeCapacity">See <see cref="EntityStoreBase.MinArchetypeCapacity"/>.</param>
+    public EntityStore(int minArchetypeCapacity) : this (PidType.UsePidAsId, minArchetypeCapacity) { }
+
+    public EntityStore(PidType pidType) : this (pidType, ArchetypeUtils.MinCapacity) { }
+
+    /// <param name="pidType">How entity pids are assigned.</param>
+    /// <param name="minArchetypeCapacity">See <see cref="EntityStoreBase.MinArchetypeCapacity"/>.</param>
+    public EntityStore(PidType pidType, int minArchetypeCapacity) : base (minArchetypeCapacity)
     {
         intern              = new Intern(pidType);
         extension           = new StoreExtension(pidType);

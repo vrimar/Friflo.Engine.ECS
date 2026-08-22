@@ -38,7 +38,7 @@ public abstract class ComponentType : SchemaType, IComparable<ComponentType>
     #endregion
 
 #region methods
-    internal abstract   StructHeap              CreateHeap();
+    internal abstract   StructHeap              CreateHeap(int capacity);
     [ExcludeFromCodeCoverage] internal virtual  bool RemoveEntityComponent  (Entity entity)                 => throw new InvalidOperationException();
     [ExcludeFromCodeCoverage] internal virtual  bool AddEntityComponent     (Entity entity)                 => throw new InvalidOperationException();
     [ExcludeFromCodeCoverage] internal virtual  bool AddEntityComponentValue(Entity entity, object value)   => throw new InvalidOperationException();
@@ -114,8 +114,8 @@ internal sealed class ComponentType<T> : ComponentType
         return entity.AddComponent(componentValue);
     }
     
-    internal override StructHeap CreateHeap() {
-        return new StructHeap<T>(StructIndex);
+    internal override StructHeap CreateHeap(int capacity) {
+        return new StructHeap<T>(StructIndex, capacity);
     }
     
     internal override ComponentCommands CreateComponentCommands()
@@ -179,7 +179,7 @@ internal sealed class RelationType<T> : ComponentType
         AbstractEntityRelations.AddRelationSilent(entity.store, entity.Id, relation);
     }
     
-    internal override StructHeap CreateHeap() {
-        return new StructHeap<T>(StructIndex);
+    internal override StructHeap CreateHeap(int capacity) {
+        return new StructHeap<T>(StructIndex, capacity);
     }
 }

@@ -49,6 +49,14 @@ public abstract partial class EntityStoreBase
     
     /// <summary> Return the sum of all Archetype capacities. </summary>
     [Browse(Never)] public              long                    CapacitySumArchetypes => internBase.archetypesCapacity;
+
+    /// <summary>
+    /// The capacity every <see cref="Archetype"/> of this store reserves, and the step it grows and shrinks by.
+    /// Default: <see cref="ArchetypeUtils.MinCapacity"/>.<br/>
+    /// A store holding few entities per archetype reclaims most of its memory with a low value; one holding
+    /// many pays fewer array copies with a high one.
+    /// </summary>
+    [Browse(Never)] public              int                     MinArchetypeCapacity => minArchetypeCapacity;
     
     [Browse(Never)] internal     Action<ComponentChanged>       ComponentAdded  => internBase.componentAdded;
     [Browse(Never)] internal     Action<ComponentChanged>       ComponentRemoved=> internBase.componentRemoved;
@@ -86,7 +94,8 @@ public abstract partial class EntityStoreBase
     [Browse(Never)] internal readonly   int[]                   singleIds;          //  8
     [Browse(Never)] internal            int                     singleIndex;        //  4
     [Browse(Never)] internal            bool                    shrinkArchetypes;   //  1
-    
+    [Browse(Never)] internal readonly   int                     minArchetypeCapacity; // 4
+
                     internal            InternBase              internBase;         // 88
     /// <summary>Contains state of <see cref="EntityStoreBase"/> not relevant for application development.</summary>
     /// <remarks>Declaring internal state fields in this struct remove noise in debugger.</remarks>
@@ -134,8 +143,10 @@ public abstract partial class EntityStoreBase
     #endregion
     
 #region initialize
-    protected EntityStoreBase()
+    protected EntityStoreBase(int minArchetypeCapacity = ArchetypeUtils.MinCapacity)
     {
+        AssertMinArchetypeCapacity(minArchetypeCapacity);
+        this.minArchetypeCapacity = minArchetypeCapacity;
         archs               = new Archetype[2];
         archSet             = new HashSet<ArchetypeKey>(ArchetypeKeyEqualityComparer.Instance);
         var config          = GetArchetypeConfig(this);
@@ -147,6 +158,14 @@ public abstract partial class EntityStoreBase
         internBase.createEntityBatches  = new StackArray<CreateEntityBatch> (Array.Empty<CreateEntityBatch>());
         internBase.entityLists          = new StackArray<EntityList>        (Array.Empty<EntityList>());
         singleIds                       = new int[Static.SingleMax];
+    }
+
+    private static void AssertMinArchetypeCapacity(int minArchetypeCapacity)
+    {
+        if (minArchetypeCapacity >= ArchetypeUtils.MaxComponentMultiple && (minArchetypeCapacity & (minArchetypeCapacity - 1)) == 0) {
+            return;
+        }
+        throw new ArgumentException($"expect a power of two >= {ArchetypeUtils.MaxComponentMultiple} - was: {minArchetypeCapacity}", nameof(minArchetypeCapacity));
     }
     #endregion
     

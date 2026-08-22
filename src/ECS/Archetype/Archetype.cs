@@ -162,8 +162,8 @@ public sealed class Archetype
     /// <summary>Create an instance of an <see cref="EntityStoreBase.defaultArchetype"/></summary>
     internal Archetype(in ArchetypeConfig config)
     {
-        config.store.AddArchetypeCapacity(ArchetypeUtils.MinCapacity);
-        memory.capacity         = ArchetypeUtils.MinCapacity;
+        config.store.AddArchetypeCapacity(config.store.minArchetypeCapacity);
+        memory.capacity         = config.store.minArchetypeCapacity;
         memory.shrinkThreshold  = -1;
         store           = config.store;
         entityStore     = store as EntityStore;
@@ -180,8 +180,8 @@ public sealed class Archetype
     /// <summary> used by <see cref="AbstractEntityRelations"/> </summary>
     internal Archetype(in ArchetypeConfig config, StructHeap heap)
     {
-        config.store.AddArchetypeCapacity(ArchetypeUtils.MinCapacity);
-        memory.capacity = ArchetypeUtils.MinCapacity;
+        config.store.AddArchetypeCapacity(config.store.minArchetypeCapacity);
+        memory.capacity = config.store.minArchetypeCapacity;
         memory.shrinkThreshold  = -1;
         store           = config.store;
         entityStore     = store as EntityStore;
@@ -201,8 +201,8 @@ public sealed class Archetype
     /// </summary>
     private Archetype(in ArchetypeConfig config, StructHeap[] heaps, in Tags tags)
     {
-        config.store.AddArchetypeCapacity(ArchetypeUtils.MinCapacity);
-        memory.capacity = ArchetypeUtils.MinCapacity;
+        config.store.AddArchetypeCapacity(config.store.minArchetypeCapacity);
+        memory.capacity = config.store.minArchetypeCapacity;
         memory.shrinkThreshold  = -1;
         store           = config.store;
         entityStore     = store as EntityStore;
@@ -231,7 +231,7 @@ public sealed class Archetype
         var componentHeaps  = new StructHeap[length];
         int n = 0;
         foreach (var componentType in componentTypes) {
-            componentHeaps[n++] = componentType.CreateHeap();
+            componentHeaps[n++] = componentType.CreateHeap(config.store.minArchetypeCapacity);
         }
         return new Archetype(config, componentHeaps, tags);
     }
@@ -327,9 +327,9 @@ public sealed class Archetype
     
     private static void Resize(Archetype arch, int capacity)
     {
-        AssertCapacity(capacity);
+        AssertCapacity(arch, capacity);
         int shrinkThreshold = capacity / 4;
-        if (shrinkThreshold < ArchetypeUtils.MinCapacity) {
+        if (shrinkThreshold < arch.store.minArchetypeCapacity) {
             shrinkThreshold = -1;
         }
         arch.store.AddArchetypeCapacity(capacity - arch.memory.capacity);
@@ -345,10 +345,11 @@ public sealed class Archetype
     }
     
     [Conditional("DEBUG")] [ExcludeFromCodeCoverage]
-    private static void AssertCapacity(int capacity) {
-        var multiple = capacity / ArchetypeUtils.MinCapacity;
-        if (multiple * ArchetypeUtils.MinCapacity != capacity) {
-            throw new InvalidOperationException($"invalid capacity. Expect multiple of: {ArchetypeUtils.MinCapacity} - was: {capacity}");
+    private static void AssertCapacity(Archetype arch, int capacity) {
+        var minCapacity = arch.store.minArchetypeCapacity;
+        var multiple    = capacity / minCapacity;
+        if (multiple * minCapacity != capacity) {
+            throw new InvalidOperationException($"invalid capacity. Expect multiple of: {minCapacity} - was: {capacity}");
         }
     }
     
@@ -431,7 +432,7 @@ public sealed class Archetype
 
 public static class ArchetypeUtils
 {
-    /// <summary> Minimum: 64 see <see cref="MaxComponentMultiple"/> to support padding for vectorization.</summary>
+    /// <summary> Default for <see cref="EntityStoreBase.MinArchetypeCapacity"/>. Minimum: 64 see <see cref="MaxComponentMultiple"/> to support padding for vectorization.</summary>
     /// <remarks> Could be less than 64 if using <see cref="StructPadding{T}.ByteSize"/> for <see cref="StructHeap{T}.components"/> </remarks>
     public   const  int     MinCapacity             = 512;
     

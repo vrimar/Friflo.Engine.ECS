@@ -34,10 +34,10 @@ internal sealed class StructHeap<T> : StructHeap, IComponentStash<T>
     internal            T[]                 components;     //  8
     internal            T                   componentStash; //  sizeof(T)
     
-    internal StructHeap(int structIndex)
+    internal StructHeap(int structIndex, int capacity)
         : base (structIndex)
     {
-        components          = new T[ArchetypeUtils.MinCapacity];
+        components          = new T[capacity];
     }
     
     internal override void StashComponent(int compIndex) {

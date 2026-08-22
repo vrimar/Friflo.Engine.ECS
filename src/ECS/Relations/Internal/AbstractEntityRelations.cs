@@ -80,7 +80,7 @@ internal abstract class AbstractEntityRelations : IRelationKeyStash
     [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2080", Justification = "TODO")] // TODO
     private static AbstractEntityRelations CreateEntityRelations(EntityStoreBase store, ComponentType componentType)
     {
-        var heap        = componentType.CreateHeap();
+        var heap        = componentType.CreateHeap(store.minArchetypeCapacity);
         var config      = EntityStoreBase.GetArchetypeConfig(store);
         var archetype   = new Archetype(config, heap);
         
