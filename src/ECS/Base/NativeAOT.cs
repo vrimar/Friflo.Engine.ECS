@@ -139,10 +139,9 @@ A type initializer threw an exception. To determine which type, inspect the Inne
         {
             AddType(typeof(T), SchemaTypeKind.Component);
             SchemaUtils.CreateComponentType<T>(0, null, null);              // dummy call to prevent trimming required type info
-            IndexedValueUtils.GetIndexedComponentValue<T, TValue>(default); // dummy call to prevent trimming required type info
-            ComponentIndexUtils.CreateComponentIndexNativeAot[typeof(T)] = (store, componentType) => {
+            ComponentIndexUtils.Register<T, TValue>(typeof(ValueClassIndex<T, TValue>), (store, componentType) => {
                 return new ValueClassIndex<T, TValue>(store, componentType);
-            };
+            });
         }
     }
     
@@ -150,45 +149,48 @@ A type initializer threw an exception. To determine which type, inspect the Inne
         where T : struct, IIndexedComponent<TValue>
         where TValue : struct
     {
+        if (typeof(TValue) == typeof(Entity)) {
+            throw new ArgumentException($"IIndexedComponent<Entity> must be registered with {nameof(RegisterIndexedComponentEntity)}<T>(). type: {typeof(T)}");
+        }
         InitSchema();
         if (typeSet.Add(typeof(T)))
         {
             AddType(typeof(T), SchemaTypeKind.Component);
             SchemaUtils.CreateComponentType<T>(0, null, null);              // dummy call to prevent trimming required type info
-            IndexedValueUtils.GetIndexedComponentValue<T, TValue>(default); // dummy call to prevent trimming required type info
-            ComponentIndexUtils.CreateComponentIndexNativeAot[typeof(T)] = (store, componentType) => {
+            ComponentIndexUtils.Register<T, TValue>(typeof(ValueStructIndex<T, TValue>), (store, componentType) => {
                 return new ValueStructIndex<T, TValue>(store, componentType);
-            };
+            });
         }
     }
     
     public void RegisterIndexedComponentEntity<T>()
-        where T : struct, ILinkComponent
+        where T : struct, IIndexedComponent<Entity>
     {
         InitSchema();
         if (typeSet.Add(typeof(T)))
         {
             AddType(typeof(T), SchemaTypeKind.Component);
             SchemaUtils.CreateComponentType<T>(0, null, null);              // dummy call to prevent trimming required type info
-            IndexedValueUtils.GetIndexedComponentValue<T, Entity>(default); // dummy call to prevent trimming required type info
-            ComponentIndexUtils.CreateComponentIndexNativeAot[typeof(T)] = (store, componentType) => {
+            ComponentIndexUtils.Register<T, Entity>(typeof(EntityIndex<T>), (store, componentType) => {
                 return new EntityIndex<T>(store, componentType);
-            };
+            });
         }
     }
     
     public void RegisterRelation<T, TKey>()
         where T : struct, IRelation<TKey>
     {
+        if (typeof(TKey) == typeof(Entity)) {
+            throw new ArgumentException($"IRelation<Entity> must be registered with {nameof(RegisterLinkRelation)}<T>(). type: {typeof(T)}");
+        }
         InitSchema();
         if (typeSet.Add(typeof(T)))
         {
             AddType(typeof(T), SchemaTypeKind.Component);
-            RelationUtils.GetRelationKey<T,TKey>(default);          // dummy call to prevent trimming required type info
             SchemaUtils.CreateRelationType<T>(0, null, null);       // dummy call to prevent trimming required type info
-            AbstractEntityRelations.CreateEntityRelationsNativeAot[typeof(T)] = (componentType, archetype, heap) => {
+            AbstractEntityRelations.Register<T, TKey>(typeof(GenericEntityRelations<T, TKey>), (componentType, archetype, heap) => {
                 return new GenericEntityRelations<T, TKey>(componentType, archetype, heap);
-            };
+            });
         }
     }
     
@@ -199,11 +201,10 @@ A type initializer threw an exception. To determine which type, inspect the Inne
         if (typeSet.Add(typeof(T)))
         {
             AddType(typeof(T), SchemaTypeKind.Component);
-            RelationUtils.GetRelationKey<T,Entity>(default);        // dummy call to prevent trimming required type info
             SchemaUtils.CreateRelationType<T>(0, null, null);       // dummy call to prevent trimming required type info
-            AbstractEntityRelations.CreateEntityRelationsNativeAot[typeof(T)] = (componentType, archetype, heap) => {
+            AbstractEntityRelations.Register<T, Entity>(typeof(EntityLinkRelations<T>), (componentType, archetype, heap) => {
                 return new EntityLinkRelations<T>(componentType, archetype, heap);
-            };
+            });
         }
     }
 

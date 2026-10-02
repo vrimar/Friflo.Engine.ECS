@@ -6,6 +6,37 @@ This project is a fork of [friflo/Friflo.Engine.ECS](https://github.com/friflo/F
 by Ullrich Praetz. Versions carry a `-fuse.N` suffix; the major version tracks this
 fork's own compatibility line, not upstream's.
 
+## 4.1.0-fuse.2
+
+### Changed
+
+- **`RegisterIndexedComponentEntity<T>` accepts any `IIndexedComponent<Entity>`**, not only an
+  `ILinkComponent` — the constraint `EntityIndex<T>` itself has.
+  `RegisterIndexedComponentStruct<T, Entity>` throws `ArgumentException` naming
+  `RegisterIndexedComponentEntity`. It recorded a `ValueStructIndex` where an `Entity` value needs
+  an `EntityIndex`, so deleting the target entity kept the component on the entities linking to
+  it, and their index rows.
+- **`RegisterRelation<T, Entity>` throws `ArgumentException`** naming `RegisterLinkRelation`. It
+  recorded a `GenericEntityRelations` where an `Entity` key needs an `EntityLinkRelations`, so
+  `GetIncomingLinks` failed with a `NullReferenceException`.
+- **A registration decides the index or relation storage under JIT too**, not only under NativeAOT:
+  the schema reads the record a `Register*` call writes before it reflects. A registered indexed
+  component's `[ComponentIndex(...)]` attribute is ignored; it gets the default `ValueClassIndex`
+  or `ValueStructIndex` its registration names.
+
+### Fixed
+
+- **Indexed components and relations work under NativeAOT when their types are not rooted.**
+  The schema found a type's index or relation storage, and the stores built their value and
+  key getters, by reflecting over `IIndexedComponent<>` and `IRelation<>`. ILC drops an interface
+  from a type's interface map, and its metadata, when nothing casts to it. An unrooted indexed
+  component then got no index type (`NullReferenceException` in `ComponentIndex<,>()`), and an
+  unrooted relation was not counted as indexed (`IndexOutOfRangeException` in `AddRelation`) or
+  failed `MakeGenericMethod` constraint validation. `RegisterIndexedComponentClass`,
+  `RegisterIndexedComponentStruct`, `RegisterIndexedComponentEntity`, `RegisterRelation` and
+  `RegisterLinkRelation` record the index or relation type, the value or key type and the getter
+  they know statically, and the schema and stores read that record before reflecting.
+
 ## 4.1.0-fuse.1
 
 ### Added

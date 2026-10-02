@@ -11,9 +11,31 @@ namespace Friflo.Engine.ECS.Index;
 
 internal delegate AbstractComponentIndex CreateComponentIndex(EntityStore store, ComponentType componentType);
 
+internal readonly struct RegisteredIndex
+{
+    internal readonly   Type                    indexType;
+    internal readonly   Type                    valueType;
+    internal readonly   Delegate                getIndexedValue;
+    internal readonly   CreateComponentIndex    create;
+
+    internal RegisteredIndex(Type indexType, Type valueType, Delegate getIndexedValue, CreateComponentIndex create) {
+        this.indexType          = indexType;
+        this.valueType          = valueType;
+        this.getIndexedValue    = getIndexedValue;
+        this.create             = create;
+    }
+}
+
 internal static class ComponentIndexUtils
 {
-    internal static readonly Dictionary<Type, CreateComponentIndex> CreateComponentIndexNativeAot = new ();
+    internal static readonly Dictionary<Type, RegisteredIndex> RegisteredIndexes = new ();
+    
+    internal static void Register<T, TValue>(Type indexType, CreateComponentIndex create)
+        where T : struct, IIndexedComponent<TValue>
+    {
+        GetIndexedValue<T, TValue> getIndexedValue = IndexedValueUtils.GetIndexedComponentValue<T, TValue>;
+        RegisteredIndexes[typeof(T)] = new RegisteredIndex(indexType, typeof(TValue), getIndexedValue, create);
+    }
     
     /// Call constructors of<br/>
     /// <see cref="ValueStructIndex{TIndexedComponent,TValue}"/>
@@ -27,10 +49,10 @@ internal static class ComponentIndexUtils
         var constructor = componentType.IndexType.GetConstructor(flags, null, paramTypes, null);
         if (constructor == null) {
             // constructor is null in Native AOT
-            if (!CreateComponentIndexNativeAot.TryGetValue(componentType.Type, out var create)) {
+            if (!RegisteredIndexes.TryGetValue(componentType.Type, out var registered)) {
                 throw new InvalidOperationException($"Native AOT requires registration of IIndexedComponent with aot.RegisterIndexedComponent(). type: {componentType.Type}.");   
             }
-            return create(store, componentType);
+            return registered.create(store, componentType);
         }
         var args    = new object[] { store, componentType };
         var obj     = constructor.Invoke(args);
@@ -41,6 +63,11 @@ internal static class ComponentIndexUtils
     [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070", Justification = "TODO")] // TODO
     internal static Type GetIndexType(Type componentType, out Type valueType)
     {
+        // Native AOT drops IIndexedComponent<> from the interface map when nothing casts to it
+        if (RegisteredIndexes.TryGetValue(componentType, out var registered)) {
+            valueType = registered.valueType;
+            return registered.indexType;
+        }
         var interfaces = componentType.GetInterfaces();
         foreach (var i in interfaces)
         {

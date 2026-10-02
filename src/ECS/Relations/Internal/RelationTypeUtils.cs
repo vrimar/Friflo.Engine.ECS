@@ -12,6 +12,11 @@ internal static class RelationTypeUtils
     [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070", Justification = "TODO")] // TODO
     internal static Type GetEntityRelationsType(Type componentType, out Type keyType)
     {
+        // Native AOT drops IRelation<> from the interface map when nothing casts to it
+        if (AbstractEntityRelations.RegisteredRelations.TryGetValue(componentType, out var registered)) {
+            keyType = registered.keyType;
+            return registered.relationType;
+        }
         var interfaces = componentType.GetInterfaces();
         foreach (var i in interfaces)
         {

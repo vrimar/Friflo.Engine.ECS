@@ -15,13 +15,35 @@ namespace Friflo.Engine.ECS.Relations;
 
 internal delegate AbstractEntityRelations CreateEntityRelations(ComponentType componentType, Archetype archetype, StructHeap heap);
 
+internal readonly struct RegisteredRelation
+{
+    internal readonly   Type                    relationType;
+    internal readonly   Type                    keyType;
+    internal readonly   Delegate                getRelationKey;
+    internal readonly   CreateEntityRelations   create;
+
+    internal RegisteredRelation(Type relationType, Type keyType, Delegate getRelationKey, CreateEntityRelations create) {
+        this.relationType   = relationType;
+        this.keyType        = keyType;
+        this.getRelationKey = getRelationKey;
+        this.create         = create;
+    }
+}
+
 internal abstract class AbstractEntityRelations : IRelationKeyStash
 {
     internal            int                         version;
     internal            int                         Count       => archetype.Count;
     public    override  string                      ToString()  => $"relation count: {archetype.Count}";
 
-    internal static readonly Dictionary<Type, CreateEntityRelations> CreateEntityRelationsNativeAot = new ();
+    internal static readonly Dictionary<Type, RegisteredRelation> RegisteredRelations = new ();
+
+    internal static void Register<T, TKey>(Type relationType, CreateEntityRelations create)
+        where T : struct, IRelation<TKey>
+    {
+        GetRelationKey<T, TKey> getRelationKey = RelationUtils.GetRelationKey<T, TKey>;
+        RegisteredRelations[typeof(T)] = new RegisteredRelation(relationType, typeof(TKey), getRelationKey, create);
+    }
 #region fields
     /// Single <see cref="Archetype"/> containing all relations of a specific <see cref="IRelation{TKey}"/>
     internal  readonly  Archetype                   archetype;
@@ -89,10 +111,10 @@ internal abstract class AbstractEntityRelations : IRelationKeyStash
         var constructor = componentType.RelationType.GetConstructor(flags, null, paramTypes, null);
         if (constructor == null) {
             // constructor is null in Native AOT
-            if (!CreateEntityRelationsNativeAot.TryGetValue(componentType.Type, out var create)) {
+            if (!RegisteredRelations.TryGetValue(componentType.Type, out var registered)) {
                 throw new InvalidOperationException($"Native AOT requires registration of IRelation with aot.RegisterRelation(). type: {componentType.Type}.");   
             }
-            return create(componentType, archetype, heap);
+            return registered.create(componentType, archetype, heap);
         }
         var args        = new object[] { componentType, archetype, heap };
         var obj         = constructor.Invoke(args);

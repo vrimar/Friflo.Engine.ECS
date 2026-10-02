@@ -2,6 +2,8 @@
 using Friflo.Engine.ECS;
 using NUnit.Framework;
 using Tests.ECS;
+using Tests.ECS.Index;
+using Tests.ECS.Relations;
 using static NUnit.Framework.Assert;
 
 // ReSharper disable InconsistentNaming
@@ -42,6 +44,15 @@ public static class Test_NativeAOT
             aot.CreateSchema();
         });
         AreEqual("EntitySchema already created", e!.Message);
+    }
+
+    [Test]
+    public static void Test_NativeAOT_Entity_keyed_registrations_throw() {
+
+        var aot = new NativeAOT();
+
+        Throws<ArgumentException>(() => aot.RegisterIndexedComponentStruct<AttackComponent, Entity>());
+        Throws<ArgumentException>(() => aot.RegisterRelation<AttackRelation, Entity>());
     }
 }
 

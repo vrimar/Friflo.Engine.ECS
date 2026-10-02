@@ -42,6 +42,18 @@ public class Test_AOT
         // Assert.AreEqual("Tests",                test.AssemblyName);
     }
 
+    [TestMethod]
+    public void Test_AOT_Schema_index_and_relation_types()
+    {
+        var schema = CreateSchema();
+        Assert.AreEqual("ValueClassIndex`2",        schema.GetComponentType<Player>()          .IndexType.Name);
+        Assert.AreEqual("ValueStructIndex`2",       schema.GetComponentType<IndexedInt>()      .IndexType.Name);
+        Assert.AreEqual("EntityIndex`1",            schema.GetComponentType<AttackComponent>() .IndexType.Name);
+
+        Assert.AreEqual(typeof(InventoryItemType),  schema.GetRelationType<InventoryItem>() .RelationKeyType);
+        Assert.AreEqual(typeof(Entity),             schema.GetRelationType<AttackRelation>().RelationKeyType);
+    }
+
 	[TestMethod]
 	public void Test_AOT_Create_EntityStore()
 	{

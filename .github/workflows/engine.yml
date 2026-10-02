@@ -36,6 +36,27 @@ jobs:
       working-directory: ./
       run: dotnet run --project src/Tests-NativeAOT/Tests-NativeAOT.csproj --no-build
 
+  aot:
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET 10
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+
+    # 'dotnet run' is JIT; only a published image trims the way a NativeAOT consumer does
+    - name: Publish and run NativeAOT tests
+      working-directory: ./
+      run: |
+        for project in Tests-NativeAOT Tests-NativeAOT-Struct; do
+          dotnet publish src/$project/$project.csproj -r linux-x64 -c Release -p:StackTraceSupport=false -o out/$project
+          out/$project/$project
+        done
+
 
 
 

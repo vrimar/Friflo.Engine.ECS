@@ -14,6 +14,10 @@ internal static class IndexedValueUtils
     internal static GetIndexedValue<TComponent,TValue> CreateGetValue<TComponent,TValue>()
         where TComponent : struct
     {
+        // Native AOT fails MakeGenericMethod when it cannot resolve the IIndexedComponent<> constraint
+        if (ComponentIndexUtils.RegisteredIndexes.TryGetValue(typeof(TComponent), out var registered)) {
+            return (GetIndexedValue<TComponent,TValue>)registered.getIndexedValue;
+        }
         const BindingFlags flags    = BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.InvokeMethod;
         var method          = typeof(IndexedValueUtils).GetMethod(nameof(GetIndexedComponentValue), flags);
         var genericMethod   = method!.MakeGenericMethod(typeof(TComponent), typeof(TValue));

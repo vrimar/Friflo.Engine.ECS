@@ -14,6 +14,10 @@ internal static class RelationUtils
     internal static GetRelationKey<TRelation, TKey> CreateGetRelationKey<TRelation, TKey>()
         where TRelation : struct, IRelation
     {
+        // Native AOT fails MakeGenericMethod when it cannot resolve the IRelation<> constraint
+        if (AbstractEntityRelations.RegisteredRelations.TryGetValue(typeof(TRelation), out var registered)) {
+            return (GetRelationKey<TRelation,TKey>)registered.getRelationKey;
+        }
         const BindingFlags flags    = BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.InvokeMethod;
         var method          = typeof(RelationUtils).GetMethod(nameof(GetRelationKey), flags);
         var genericMethod   = method!.MakeGenericMethod(typeof(TRelation), typeof(TKey));
