@@ -81,15 +81,19 @@ public static class Test_QueryJob
         using var runner = new ParallelJobRunner(threadCount);
         job.JobRunner               = runner;
         job.MinParallelChunkLength  = 1000;
-        job.RunParallel();  // force one time allocations
+        for (int n = 0; n < 100; n++) {
+            job.RunParallel();  // force one time allocations, including a wait event's lock taken on its first block
+        }
+        forEachCount    = 0;
+        lengthSum       = 0;
 
         var start   = Mem.GetAllocatedBytes();
-        Mem.AssertNoAlloc(start);
         job.RunParallel();
+        Mem.AssertNoAlloc(start);
         
         var sw      = new Stopwatch();
         sw.Start();
-        for (int n = 2; n < count; n++) {
+        for (int n = 1; n < count; n++) {
             job.RunParallel(); // allocate occasionally 24 byte for the entire loop in DEBUG
         }
         var duration = sw.ElapsedMilliseconds;
