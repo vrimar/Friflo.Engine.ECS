@@ -44,8 +44,9 @@ public enum JobExecution : byte
 /// - Minimize calls to synchronization primitives.<br/>
 /// - Use cheap synchronization primitives such as:
 ///   <see cref="ManualResetEventSlim"/>, <see cref="Interlocked"/> and <see cref="Volatile"/>.<br/>
-/// - Minimize thread context switches caused by <see cref="ManualResetEventSlim"/> in case calling
-///   <see cref="ManualResetEventSlim.Wait()"/> when the event is not signaled.<br/>
+/// - Minimize thread context switches: a worker that finished its task spins briefly for the next job
+///   before it parks, so jobs run back to back reach a running worker.<br/>
+/// - Never busy-wait for longer than that: an idle worker is parked and costs no CPU.<br/>
 /// Note: To analyze the amount of thread context switches use: Process Explorer > Column > CSwitch Delta.
 /// </remarks>
 public sealed class ParallelJobRunner : IDisposable
@@ -57,15 +58,17 @@ public sealed class ParallelJobRunner : IDisposable
     #endregion
     
 #region fields
-    private  readonly   ManualResetEventSlim    startWorkers;
+    // One per worker: with a shared one, a fast worker could take a slow worker's start and run its task twice.
+    private  readonly   ManualResetEventSlim[]  workerStarts;
     private  readonly   ManualResetEventSlim    allWorkersFinished;
     private  readonly   List<Exception>         taskExceptions;
-    private             int                     allFinishedBarrier;
-    private             int                     finishedWorkerCount;
+    private             int                     pendingWorkerCount;
     private             bool                    workersStarted;
     private             JobTask[]               jobTasks;
     internal readonly   int                     workerCount;
     private             bool                    running;
+    
+    private  static readonly long               SpinBeforeParkTicks = Stopwatch.Frequency * 50 / 1_000_000;
     #endregion
 #region debug fields
     private  readonly   string                  name;                   // never null. used also as monitor 
@@ -81,7 +84,10 @@ public sealed class ParallelJobRunner : IDisposable
     public ParallelJobRunner(int threadCount, string name = null) {
         workerCount         = threadCount - 1;
         running             = true;
-        startWorkers        = new ManualResetEventSlim(false, 2047);
+        workerStarts        = new ManualResetEventSlim[Math.Max(workerCount, 0)];
+        for (int n = 0; n < workerStarts.Length; n++) {
+            workerStarts[n] = new ManualResetEventSlim(false, 0);
+        }
         allWorkersFinished  = new ManualResetEventSlim(false);
         taskExceptions      = new List<Exception>();
         if (name != null) {
@@ -92,8 +98,12 @@ public sealed class ParallelJobRunner : IDisposable
     }
 
     public void Dispose() {
-        running     = false;
-        startWorkers.Set();
+        lock (name) {
+            running     = false;
+            foreach (var start in workerStarts) {
+                start.Set();
+            }
+        }
     }
 
     private void StartWorkers()
@@ -132,13 +142,15 @@ public sealed class ParallelJobRunner : IDisposable
     }
     
     [Conditional("DEBUG")] [ExcludeFromCodeCoverage]
-    private void AssertStartWorkersNotSignaled() {
-        if (startWorkers.IsSet) throw new InvalidOperationException("startWorkers.IsSet");
+    private static void AssertPendingWorkerCount(int count) {
+        if (count < 0) throw new InvalidOperationException($"unexpected pending worker count: {count}");
     }
     
     [Conditional("DEBUG")] [ExcludeFromCodeCoverage]
-    private void AssertWorkerCount(int count) {
-        if (count > workerCount) throw new InvalidOperationException($"unexpected count: {count}");
+    private void AssertWorkerStartsTaken() {
+        foreach (var start in workerStarts) {
+            if (start.IsSet) throw new InvalidOperationException("a worker start is still set");
+        }
     }
     #endregion
     
@@ -160,8 +172,10 @@ public sealed class ParallelJobRunner : IDisposable
             jobTasks = tasks;
             usedBy   = job;
             
-            Volatile.Write(ref finishedWorkerCount, 0);
-            startWorkers.Set(); // all worker threads start running ...
+            Volatile.Write(ref pendingWorkerCount, workerCount);
+            foreach (var start in workerStarts) {
+                start.Set(); // all worker threads start running ...
+            }
             
             stack.Push(this);
             try {
@@ -175,9 +189,7 @@ public sealed class ParallelJobRunner : IDisposable
 
             allWorkersFinished.Reset();
             
-            AssertStartWorkersNotSignaled();
-            
-            Interlocked.Increment(ref allFinishedBarrier);
+            AssertWorkerStartsTaken();
             
             jobTasks = null;
             usedBy   = null;
@@ -190,12 +202,13 @@ public sealed class ParallelJobRunner : IDisposable
     // ------------------------------------ worker thread loop ------------------------------------
     private void RunWorker(object workerIndex)
     {
-        var barrier = 0;
         var index   = (int)workerIndex;
+        var start   = workerStarts[index - 1];
         var stack   = _tlsUsedRunnerStack = new Stack<ParallelJobRunner>();
-        while (running)
+        while (true)
         {
-            startWorkers.Wait();
+            AwaitStart(start);
+            start.Reset();
             if (!running) break;
             
             // --- execute task
@@ -207,19 +220,26 @@ public sealed class ParallelJobRunner : IDisposable
             }
             stack.Pop();
             // ---
-            var count = Interlocked.Increment(ref finishedWorkerCount);
-            AssertWorkerCount(count);
-            if (count == workerCount)
-            {
-                startWorkers.Reset();
+            var pending = Interlocked.Decrement(ref pendingWorkerCount);
+            AssertPendingWorkerCount(pending);
+            if (pending == 0) {
                 allWorkersFinished.Set();
             }
-            // Spin wait for all workers are finished their task.
-            // Required to ensure startWorkers is not signal when they reach startWorkers.Wait() above.
-            while (barrier == Volatile.Read(ref allFinishedBarrier)) {
-                // Thread.SpinWait(30);
-            }
-            barrier++;
         }
+    }
+    
+    private static void AwaitStart(ManualResetEventSlim start)
+    {
+        var spinner     = new SpinWait();
+        var deadline    = Stopwatch.GetTimestamp() + SpinBeforeParkTicks;
+        while (!start.IsSet && Stopwatch.GetTimestamp() < deadline) {
+            // SpinOnce past its yield point may Sleep(1), far longer than the whole window.
+            if (spinner.NextSpinWillYield) {
+                Thread.Yield();
+            } else {
+                spinner.SpinOnce();
+            }
+        }
+        start.Wait();
     }
 }

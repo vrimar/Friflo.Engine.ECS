@@ -6,6 +6,20 @@ This project is a fork of [friflo/Friflo.Engine.ECS](https://github.com/friflo/F
 by Ullrich Praetz. Versions carry a `-fuse.N` suffix; the major version tracks this
 fork's own compatibility line, not upstream's.
 
+## 4.1.0-fuse.5
+
+4.1.0-fuse.3 and 4.1.0-fuse.4 ran all of a query's archetypes in one parallel job. That change had
+known bugs, including hangs, and this version removes it: do not use those two versions.
+
+### Fixed
+
+- **An idle `ParallelJobRunner` worker parks instead of spinning.** A worker that finished its task
+  busy-waited, without yielding, until every other task of the job finished and the caller returned,
+  and `RunParallel` starts one job per archetype, so each worker spent most of its time in that
+  loop: in a game client running parallel queries every frame, 7 workers kept ~5 cores busy for ~18%
+  useful work. Each worker now waits on its own event, spinning up to 50 µs - yielding to other
+  threads - for the next job before it blocks.
+
 ## 4.1.0-fuse.2
 
 ### Changed
