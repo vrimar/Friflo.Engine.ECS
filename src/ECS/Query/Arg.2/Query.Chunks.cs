@@ -5,6 +5,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -107,7 +108,7 @@ where T2 : struct
         archetypePos    = -1;
         if (query.checkChange) {
             store = query.store;
-            store.internBase.activeQueryLoops++;
+            Interlocked.Increment(ref store.internBase.activeQueryLoops);
         }
     }
     
@@ -169,7 +170,7 @@ where T2 : struct
     // --- IDisposable
     public void Dispose() {
         if (store != null) {
-            store.internBase.activeQueryLoops--;
+            Interlocked.Decrement(ref store.internBase.activeQueryLoops);
         }
     }
 }

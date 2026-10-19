@@ -526,6 +526,27 @@ public static class Test_QueryJob
     }
     
     [Test]
+    public static void Test_QueryJob_RunParallel_concurrent_callers_keep_loop_guard()
+    {
+        using var runner    = new ParallelJobRunner(2);
+        var store           = new EntityStore(PidType.UsePidAsId) { JobRunner = runner };
+        for (int n = 0; n < 8; n++) {
+            store.CreateEntity().AddComponent<MyComponent1>();
+        }
+        var job = store.Query<MyComponent1>().ForEach((_, _) => { });
+        
+        Parallel.For(0, 3, _ => {
+            for (int n = 0; n < 20_000; n++) job.RunParallel();
+        });
+        
+        var outside = store.CreateEntity();
+        outside.AddComponent<MyComponent2>();
+        foreach (var entity in store.Query<MyComponent1>().Entities) {
+            Assert.Throws<StructuralChangeException>(() => entity.AddTag<TestTag>());
+        }
+    }
+    
+    [Test]
     public static void Test_QueryJob_RunParallel_after_worker_interrupt()
     {
         using var runner    = new ParallelJobRunner(2);
