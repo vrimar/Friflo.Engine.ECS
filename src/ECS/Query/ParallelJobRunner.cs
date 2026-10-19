@@ -62,29 +62,34 @@ public sealed class ParallelJobRunner : IDisposable
     private  readonly   ManualResetEventSlim[]  workerStarts;
     private  readonly   ManualResetEventSlim    allWorkersFinished;
     private  readonly   List<Exception>         taskExceptions;
+    private  readonly   object                  jobLock = new object();
     private             int                     pendingWorkerCount;
-    private             bool                    workersStarted;
+    private             int                     startedWorkers;
     private             JobTask[]               jobTasks;
     internal readonly   int                     workerCount;
     private             bool                    running;
     
     private  static readonly long               SpinBeforeParkTicks = Stopwatch.Frequency * 50 / 1_000_000;
+    private  const      int                     MaxThreadCount      = 256; // a task index must fit a byte
     #endregion
 #region debug fields
-    private  readonly   string                  name;                   // never null. used also as monitor 
+    private  readonly   string                  name;                   // never null
     private             object                  usedBy;                 // only used for exceptions to provide context
+    // Whose task started the current job; walking it catches nesting through other runners that would deadlock.
+    private             ParallelJobRunner       enclosing;
     [ThreadStatic]
-    // Used only for throwing an exception if using same job runner twice.
-    // Not checking for this case result in a deadlock which is much harder to find.
-    private  static     Stack<ParallelJobRunner>_tlsUsedRunnerStack;    // single instance per thread
+    private  static     ParallelJobRunner       _tlsCurrent;            // the runner whose task this thread executes
     private  static     int                     _jobRunnerIdSeq;
     #endregion
     
 #region general
     public ParallelJobRunner(int threadCount, string name = null) {
+        if (threadCount < 1 || threadCount > MaxThreadCount) {
+            throw new ArgumentOutOfRangeException(nameof(threadCount), threadCount, $"must be in range [1, {MaxThreadCount}]");
+        }
         workerCount         = threadCount - 1;
         running             = true;
-        workerStarts        = new ManualResetEventSlim[Math.Max(workerCount, 0)];
+        workerStarts        = new ManualResetEventSlim[workerCount];
         for (int n = 0; n < workerStarts.Length; n++) {
             workerStarts[n] = new ManualResetEventSlim(false, 0);
         }
@@ -98,35 +103,64 @@ public sealed class ParallelJobRunner : IDisposable
     }
 
     public void Dispose() {
-        var stack = _tlsUsedRunnerStack;
-        if (stack != null && stack.Contains(this)) {
+        if (IsUsedByCurrentThread()) {
             throw new InvalidOperationException($"'{name}' cannot be disposed by one of its own tasks");
         }
-        lock (name) {
+        ThreadInterruptedException interrupted = null;
+        lock (jobLock) {
             running     = false;
             foreach (var start in workerStarts) {
-                start.Set();
+                interrupted = SetUninterrupted(start) ?? interrupted;
             }
+        }
+        if (interrupted != null) {
+            throw interrupted;
         }
     }
 
     private void StartWorkers()
     {
-        workersStarted = true;
-        for (int index = 1; index <= workerCount; index++)
+        while (startedWorkers < workerCount)
         {
-            var thread = new Thread(RunWorker) {
+            var index   = startedWorkers + 1;
+            var thread  = new Thread(RunWorker) {
                 Name            = $"{name} - worker {index}",
                 IsBackground    = true
             };
-            thread.Start(index);
+            // A worker outlives the caller that starts it, so it must not carry that caller's AsyncLocal state.
+            using (ExecutionContext.SuppressFlow()) {
+                thread.Start(index);
+            }
+            startedWorkers = index;
         }
     }
     
-    private void AddTaskException (Exception exception)
+    private ThreadInterruptedException AddTaskException (Exception exception)
     {
-        lock (taskExceptions) {
-            taskExceptions.Add(exception);
+        ThreadInterruptedException interrupted = null;
+        while (true) {
+            try {
+                lock (taskExceptions) {
+                    taskExceptions.Add(exception);
+                }
+                return interrupted;
+            } catch (ThreadInterruptedException e) {
+                interrupted = e;
+            }
+        }
+    }
+    
+    // Set locks while a thread waits: an interrupt there must not leave a job half started or never finished.
+    private static ThreadInterruptedException SetUninterrupted (ManualResetEventSlim signal)
+    {
+        ThreadInterruptedException interrupted = null;
+        while (true) {
+            try {
+                signal.Set();
+                return interrupted;
+            } catch (ThreadInterruptedException e) {
+                interrupted = e;
+            }
         }
     }
     
@@ -156,47 +190,70 @@ public sealed class ParallelJobRunner : IDisposable
             if (start.IsSet) throw new InvalidOperationException("a worker start is still set");
         }
     }
+    
+    private bool IsUsedByCurrentThread() {
+        for (var runner = _tlsCurrent; runner != null; runner = runner.enclosing) {
+            if (runner == this) return true;
+        }
+        return false;
+    }
+    
+    internal void ThrowIfUnusable() {
+        if (!running)                   throw RunnerDisposedException();
+        if (IsUsedByCurrentThread())    throw AlreadyUsedByException(usedBy);
+    }
     #endregion
     
     // ----------------------------------- job on caller thread -----------------------------------
     internal void ExecuteJob(object job, JobTask[] tasks)
     {
-        var stack = _tlsUsedRunnerStack ??= new Stack<ParallelJobRunner>();
-        // In a common application without nested jobs: stack.Count == 0
-        foreach (var runner in stack) {
-            if (runner == this) throw AlreadyUsedByException(usedBy);    
-        }
-        lock(name)
+        if (IsUsedByCurrentThread()) throw AlreadyUsedByException(usedBy);
+        lock (jobLock)
         {
             if (!running)       throw RunnerDisposedException();
             taskExceptions.Clear();
-            if (!workersStarted) {
-                StartWorkers();
-            }
-            jobTasks = tasks;
-            usedBy   = job;
+            StartWorkers();
+            var caller  = _tlsCurrent;
+            enclosing   = caller;
+            jobTasks    = tasks;
+            usedBy      = job;
             
+            ThreadInterruptedException interrupted = null;
             Volatile.Write(ref pendingWorkerCount, workerCount);
             foreach (var start in workerStarts) {
-                start.Set(); // all worker threads start running ...
+                interrupted = SetUninterrupted(start) ?? interrupted; // all worker threads start running ...
             }
             
-            stack.Push(this);
+            _tlsCurrent = this;
             try {
                 tasks[0].ExecuteTask();
             } catch (Exception exception) {
-                AddTaskException(exception);
+                interrupted = AddTaskException(exception) ?? interrupted;
+            } finally {
+                _tlsCurrent = caller;
             }
-            stack.Pop();
-
-            allWorkersFinished.Wait();
-
-            allWorkersFinished.Reset();
+            
+            if (workerCount > 0) {
+                // Leaving before every worker finished would let the next job's count absorb this job's late decrement.
+                while (true) {
+                    try {
+                        allWorkersFinished.Wait();
+                        break;
+                    } catch (ThreadInterruptedException exception) {
+                        interrupted = exception;
+                    }
+                }
+                allWorkersFinished.Reset();
+            }
             
             AssertWorkerStartsTaken();
             
-            jobTasks = null;
-            usedBy   = null;
+            jobTasks    = null;
+            usedBy      = null;
+            enclosing   = null;
+            if (interrupted != null) {
+                throw interrupted;
+            }
             if (taskExceptions.Count > 0) {
                 throw JobException(job);
             }
@@ -208,7 +265,6 @@ public sealed class ParallelJobRunner : IDisposable
     {
         var index   = (int)workerIndex;
         var start   = workerStarts[index - 1];
-        var stack   = _tlsUsedRunnerStack = new Stack<ParallelJobRunner>();
         while (true)
         {
             AwaitStart(start);
@@ -216,18 +272,19 @@ public sealed class ParallelJobRunner : IDisposable
             if (!running) break;
             
             // --- execute task
-            stack.Push(this);
+            _tlsCurrent = this;
             try {
                 jobTasks[index].ExecuteTask();
             } catch (Exception exception) {
                 AddTaskException(exception);
+            } finally {
+                _tlsCurrent = null;
             }
-            stack.Pop();
             // ---
             var pending = Interlocked.Decrement(ref pendingWorkerCount);
             AssertPendingWorkerCount(pending);
             if (pending == 0) {
-                allWorkersFinished.Set();
+                SetUninterrupted(allWorkersFinished);
             }
         }
     }
@@ -244,6 +301,13 @@ public sealed class ParallelJobRunner : IDisposable
                 spinner.SpinOnce();
             }
         }
-        start.Wait();
+        while (true) {
+            try {
+                start.Wait();
+                return;
+            } catch (ThreadInterruptedException) {
+                // A task that interrupts its worker must not kill the worker, which would hang every later job.
+            }
+        }
     }
 }

@@ -11,6 +11,11 @@ fork's own compatibility line, not upstream's.
 4.1.0-fuse.3 and 4.1.0-fuse.4 ran all of a query's archetypes in one parallel job. That change had
 known bugs, including hangs, and this version removes it: do not use those two versions.
 
+### Changed
+
+- **`ParallelJobRunner` accepts 1 to 256 threads** and throws `ArgumentOutOfRangeException` otherwise,
+  since `ChunkEntities.TaskIndex` is a byte.
+
 ### Fixed
 
 - **An idle `ParallelJobRunner` worker parks instead of spinning.** A worker that finished its task
@@ -21,6 +26,16 @@ known bugs, including hangs, and this version removes it: do not use those two v
   threads - for the next job before it blocks.
 - **`Dispose` from one of the runner's own tasks throws `InvalidOperationException`** instead of
   waiting forever for the job that task belongs to.
+- **A task running a job on a runner already busy further up its chain throws "already used by"**
+  instead of hanging, also when the chain passes through another runner's worker; `Dispose` from such
+  a task throws the same way.
+- **Runners no longer lock on their name**, so runners sharing a name no longer share one lock and
+  deadlock when one runs inside the other.
+- **A worker that failed to start is started by the next job** instead of leaving every later job
+  waiting for it.
+- **An interrupted caller or worker finishes the job before the interrupt surfaces**, instead of
+  leaving workers running into the next job.
+- **Workers no longer carry the `ExecutionContext` of the thread that started them.**
 
 ## 4.1.0-fuse.2
 
