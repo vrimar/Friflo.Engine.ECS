@@ -119,7 +119,7 @@ public readonly struct Chunk<T>
     
     internal Chunk(Chunk<T> chunk, int start, int length) {
         Length              = length;
-        this.start          = start;
+        this.start          = chunk.start + start;
         ArchetypeComponents = chunk.ArchetypeComponents;
     }
     

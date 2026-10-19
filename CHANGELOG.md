@@ -37,6 +37,8 @@ known bugs, including hangs, and this version removes it: do not use those two v
   tasks, so one call could run another's chunks.
 - **`RunParallel` reads its runner once**, so changing `JobRunner` during a run no longer drops or
   misroutes tasks.
+- **A parallel section of a value-condition or relation query starts at its chunk's entity**, not at
+  the archetype's first.
 - **A worker that failed to start is started by the next job** instead of leaving every later job
   waiting for it.
 - **An interrupted caller or worker finishes the job before the interrupt surfaces**, instead of

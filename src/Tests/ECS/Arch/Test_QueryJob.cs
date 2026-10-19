@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Friflo.Engine.ECS;
 using NUnit.Framework;
+using Tests.ECS.Index;
 using Tests.Utils;
 
 // ReSharper disable AccessToModifiedClosure
@@ -480,6 +482,29 @@ public static class Test_QueryJob
         }
     }
     
+    [Test]
+    public static void Test_QueryJob_RunParallel_value_condition_sections()
+    {
+        using var runner    = new ParallelJobRunner(2);
+        var store           = new EntityStore(PidType.UsePidAsId) { JobRunner = runner };
+        for (int n = 0; n < 8; n++) {
+            store.CreateEntity(new IndexedInt { value = n });
+        }
+        var query       = store.Query<IndexedInt>().HasValue<IndexedInt, int>(5);
+        var sequential  = new List<int>();
+        var parallel    = new List<int>();
+        query.ForEach((_, entities) => sequential.AddRange(entities.Ids.ToArray())).Run();
+        var job = query.ForEach((_, entities) => {
+            lock (parallel) {
+                parallel.AddRange(entities.Ids.ToArray());
+            }
+        });
+        job.MinParallelChunkLength = 1;
+        job.RunParallel();
+        
+        Assert.AreEqual(new [] { 6 }, sequential);
+        Assert.AreEqual(sequential, parallel);
+    }
     
     [Test]
     public static void Test_QueryJob_RunParallel_refuses_structural_change_in_task()
