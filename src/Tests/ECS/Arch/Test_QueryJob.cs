@@ -304,6 +304,26 @@ public static class Test_QueryJob
     }
     
     [Test]
+    public static void Test_QueryJob_Dispose_from_own_task()
+    {
+        using var runner    = new ParallelJobRunner(2);
+        var store           = new EntityStore(PidType.UsePidAsId) { JobRunner = runner };
+        for (int n = 0; n < 32; n++) {
+            store.CreateEntity().AddComponent<MyComponent1>();
+        }
+        var job = store.Query<MyComponent1>().ForEach((_, entities) => {
+            if (entities.TaskIndex == 1) {
+                runner.Dispose();
+            }
+        });
+        job.MinParallelChunkLength = 1;
+        
+        var e = Assert.Throws<AggregateException>(job.RunParallel)!;
+        Assert.IsInstanceOf<InvalidOperationException>(e.InnerExceptions[0]);
+        Assert.IsFalse(runner.IsDisposed);
+    }
+    
+    [Test]
     public static void Test_QueryJob_EntityStore_JobRunner()
     {
         using var jobRunner = new ParallelJobRunner(2, "MyRunner");

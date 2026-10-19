@@ -19,6 +19,8 @@ known bugs, including hangs, and this version removes it: do not use those two v
   loop: in a game client running parallel queries every frame, 7 workers kept ~5 cores busy for ~18%
   useful work. Each worker now waits on its own event, spinning up to 50 µs - yielding to other
   threads - for the next job before it blocks.
+- **`Dispose` from one of the runner's own tasks throws `InvalidOperationException`** instead of
+  waiting forever for the job that task belongs to.
 
 ## 4.1.0-fuse.2
 
