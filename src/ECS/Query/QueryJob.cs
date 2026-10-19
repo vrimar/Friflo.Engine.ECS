@@ -46,8 +46,8 @@ public abstract class QueryJob
 #region internal fields
     [Browse(Never)] internal    ParallelJobRunner   jobRunner;          //  4
     [Browse(Never)] private     int                 minParallel = 1000; //  4
-    // Concurrent RunParallel calls on one job share its task sections; the runner's own lock comes too late.
-    [Browse(Never)] internal readonly object        sectionsLock = new();
+    // Concurrent RunParallel calls on one job share its tasks; the runner's own lock comes too late.
+    [Browse(Never)] internal readonly object        jobTasksLock = new();
     #endregion
     
     /// <summary>
@@ -178,31 +178,4 @@ public abstract class QueryJob
     }
 
     #endregion
-}
-
-internal abstract class SectionedJobTask<TChunks> : JobTask
-    where TChunks : struct
-{
-    private TChunks[]   sections = new TChunks[1];
-    private int         sectionCount;
-    
-    internal override void ExecuteTask() {
-        for (int n = 0; n < sectionCount; n++) {
-            Execute(in sections[n]);
-        }
-    }
-    
-    protected abstract void Execute(in TChunks chunks);
-    
-    internal void AddSection(in TChunks chunks) {
-        if (sectionCount == sections.Length) {
-            Array.Resize(ref sections, 2 * sectionCount);
-        }
-        sections[sectionCount++] = chunks;
-    }
-    
-    internal void ClearSections() {
-        Array.Clear(sections, 0, sectionCount);
-        sectionCount = 0;
-    }
 }

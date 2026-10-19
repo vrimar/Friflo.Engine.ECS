@@ -9,8 +9,15 @@ fork's own compatibility line, not upstream's.
 ## 4.1.0-fuse.5
 
 ### Changed
+
+- **`RunParallel` runs one job per archetype again**, as before 4.1.0-fuse.3. Batching a query's
+  archetypes into one job ran their sections after the archetype loop had ended, which let a task's
+  structural change through, let the two passes classify an archetype differently, and hung a task
+  running its own job. Each task is still called once per archetype large enough to split.
 - **`ParallelJobRunner` accepts 1 to 256 threads** and throws `ArgumentOutOfRangeException` otherwise,
   since `ChunkEntities.TaskIndex` is a byte.
+- **`RunParallel` on a disposed runner throws `ObjectDisposedException`** even when no archetype
+  splits.
 
 ### Fixed
 
@@ -19,6 +26,8 @@ fork's own compatibility line, not upstream's.
   a task throws the same way.
 - **Runners no longer lock on their name**, so runners sharing a name no longer share one lock and
   deadlock when one runs inside the other.
+- **`RunParallel` reads its runner once**, so changing `JobRunner` during a run no longer drops or
+  misroutes tasks.
 - **A worker that failed to start is started by the next job** instead of leaving every later job
   waiting for it.
 - **An interrupted caller or worker finishes the job before the interrupt surfaces**, instead of

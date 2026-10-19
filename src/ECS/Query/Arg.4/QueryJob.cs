@@ -31,10 +31,11 @@ where T4 : struct
     private             QueryJobTask[]                              jobTasks;   //  8
 
 
-    private class QueryJobTask : SectionedJobTask<Chunks<T1,T2,T3,T4>> {
+    private class QueryJobTask : JobTask {
         internal    Action<Chunk<T1>, Chunk<T2>, Chunk<T3>, Chunk<T4>, ChunkEntities>     action;
+        internal    Chunks<T1,T2,T3,T4>                                  chunks;
         
-        protected override void Execute(in Chunks<T1,T2,T3,T4> chunks) => action(chunks.Chunk1, chunks.Chunk2, chunks.Chunk3, chunks.Chunk4, chunks.Entities);
+        internal  override void ExecuteTask()  => action(chunks.Chunk1, chunks.Chunk2, chunks.Chunk3, chunks.Chunk4, chunks.Entities);
     }
     
     internal QueryJob(
@@ -60,57 +61,44 @@ where T4 : struct
     /// </summary>
     public override void RunParallel()
     {
-        if (jobRunner == null) throw JobRunnerIsNullException();
-        var taskCount   = jobRunner.workerCount + 1;
-        var parallel    = false;
+        var runner      = jobRunner;
+        if (runner == null) throw JobRunnerIsNullException();
+        // Before any lock a running job holds: a task of that job blocked on it would deadlock the job.
+        runner.ThrowIfUnusable();
+        var taskCount   = runner.workerCount + 1;
+        
         foreach (Chunks<T1,T2,T3,T4> chunks in query.Chunks)
         {
-            if (ExecuteSequential(taskCount, chunks.Length)) {
+            var chunkLength = chunks.Length;
+            if (ExecuteSequential(taskCount, chunkLength)) {
                 action(chunks.Chunk1, chunks.Chunk2, chunks.Chunk3, chunks.Chunk4, chunks.Entities);
                 continue;
             }
-            parallel = true;
-        }
-        if (!parallel) {
-            return;
-        }
-        lock (sectionsLock)
-        {
-            var tasks = jobTasks;
-            if (tasks == null || tasks.Length < taskCount) {
-                tasks = jobTasks = new QueryJobTask[taskCount];
-                for (int n = 0; n < taskCount; n++) {
-                    tasks[n] = new QueryJobTask { action = action };
+            lock (jobTasksLock)
+            {
+                var tasks = jobTasks;
+                if (tasks == null || tasks.Length < taskCount) {
+                    tasks = jobTasks = new QueryJobTask[taskCount];
+                    for (int n = 0; n < taskCount; n++) {
+                        tasks[n] = new QueryJobTask { action = action };
+                    }
                 }
-            }
-            try {
-                foreach (Chunks<T1,T2,T3,T4> chunks in query.Chunks)
+                var sectionSize = GetSectionSize(chunkLength, taskCount, Multiple);
+                var start       = 0;
+                for (int taskIndex = 0; taskIndex < taskCount; taskIndex++)
                 {
-                    var chunkLength = chunks.Length;
-                    if (ExecuteSequential(taskCount, chunkLength)) {
+                    var length = GetSectionLength (chunkLength, start, sectionSize);
+                    if (length > 0) {
+                        tasks[taskIndex].chunks = new Chunks<T1,T2,T3,T4>(chunks, start, length, taskIndex);
+                        start += sectionSize;
                         continue;
                     }
-                    var sectionSize = GetSectionSize(chunkLength, taskCount, Multiple);
-                    var start       = 0;
-                    for (int taskIndex = 0; taskIndex < taskCount; taskIndex++)
-                    {
-                        var length = GetSectionLength (chunkLength, start, sectionSize);
-                        if (length > 0) {
-                            tasks[taskIndex].AddSection(new Chunks<T1,T2,T3,T4>(chunks, start, length, taskIndex));
-                            start += sectionSize;
-                            continue;
-                        }
-                        for (; taskIndex < taskCount; taskIndex++) {
-                            tasks[taskIndex].AddSection(new Chunks<T1,T2,T3,T4>(chunks.Entities, taskIndex));
-                        }
-                        break;
+                    for (; taskIndex < taskCount; taskIndex++) {
+                        tasks[taskIndex].chunks = new Chunks<T1,T2,T3,T4>(chunks.Entities, taskIndex);
                     }
+                    break;
                 }
-                jobRunner.ExecuteJob(this, tasks);
-            } finally {
-                for (int n = 0; n < taskCount; n++) {
-                    tasks[n].ClearSections();
-                }
+                runner.ExecuteJob(this, tasks);
             }
         }
     }

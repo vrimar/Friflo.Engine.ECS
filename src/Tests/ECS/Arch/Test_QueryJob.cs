@@ -386,6 +386,35 @@ public static class Test_QueryJob
     }
 
     [Test]
+    public static void Test_QueryJob_RunParallel_own_job_from_task()
+    {
+        using var runner    = new ParallelJobRunner(2);
+        var store           = new EntityStore(PidType.UsePidAsId) { JobRunner = runner };
+        for (int n = 0; n < 64; n++) {
+            store.CreateEntity().AddComponent<MyComponent1>();
+        }
+        QueryJob job    = null;
+        var refused     = 0;
+        job = store.Query<MyComponent1>().ForEach((component1, entities) => {
+            try {
+                job!.RunParallel();
+            } catch (InvalidOperationException) {
+                Interlocked.Increment(ref refused);
+            }
+            foreach (ref var c in component1.Span) {
+                ++c.a;
+            }
+        });
+        job.MinParallelChunkLength = 1;
+        job.RunParallel();
+        
+        Assert.AreEqual(2, refused);
+        foreach (var entity in store.Entities) {
+            Assert.AreEqual(1, entity.GetComponent<MyComponent1>().a);
+        }
+    }
+    
+    [Test]
     public static void Test_QueryJob_RunParallel_cycle_through_other_runner()
     {
         using var runner1   = new ParallelJobRunner(2);
@@ -449,6 +478,25 @@ public static class Test_QueryJob
         foreach (var entity in store.Entities) {
             Assert.AreEqual(1, entity.GetComponent<MyComponent2>().b);
         }
+    }
+    
+    [Test]
+    public static void Test_QueryJob_RunParallel_refuses_structural_change_in_task()
+    {
+        using var runner    = new ParallelJobRunner(2);
+        var store           = new EntityStore(PidType.UsePidAsId) { JobRunner = runner };
+        for (int n = 0; n < 64; n++) {
+            store.CreateEntity().AddComponent<MyComponent1>();
+        }
+        var job = store.Query<MyComponent1>().ForEach((_, entities) => {
+            if (entities.TaskIndex == 1) {
+                entities.EntityAt(0).AddTag<TestTag>();
+            }
+        });
+        job.MinParallelChunkLength = 1;
+        
+        var e = Assert.Throws<AggregateException>(job.RunParallel)!;
+        Assert.IsInstanceOf<StructuralChangeException>(e.InnerExceptions[0]);
     }
     
     [Test]
