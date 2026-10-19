@@ -43,6 +43,7 @@ fork's own compatibility line, not upstream's.
 - **Value-condition and relation queries must not be enumerated concurrently**, by `RunParallel` from
   several threads or by `foreach` on several threads: each enumeration rebuilds their archetype list
   into buffers shared by the query and the store.
+
 ## 4.1.0-fuse.4
 
 ### Fixed
