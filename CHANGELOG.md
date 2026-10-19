@@ -47,6 +47,12 @@ known bugs, including hangs, and this version removes it: do not use those two v
   leaving workers running into the next job.
 - **Workers no longer carry the `ExecutionContext` of the thread that started them.**
 
+### Known limitation
+
+- **Value-condition and relation queries must not be enumerated concurrently**, by `RunParallel` from
+  several threads or by `foreach` on several threads: each enumeration rebuilds their archetype list
+  into buffers shared by the query and the store.
+
 ## 4.1.0-fuse.2
 
 ### Changed
