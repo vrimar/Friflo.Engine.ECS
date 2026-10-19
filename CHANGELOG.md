@@ -6,6 +6,25 @@ This project is a fork of [friflo/Friflo.Engine.ECS](https://github.com/friflo/F
 by Ullrich Praetz. Versions carry a `-fuse.N` suffix; the major version tracks this
 fork's own compatibility line, not upstream's.
 
+## 4.1.0-fuse.5
+
+### Changed
+- **`ParallelJobRunner` accepts 1 to 256 threads** and throws `ArgumentOutOfRangeException` otherwise,
+  since `ChunkEntities.TaskIndex` is a byte.
+
+### Fixed
+
+- **A task running a job on a runner already busy further up its chain throws "already used by"**
+  instead of hanging, also when the chain passes through another runner's worker; `Dispose` from such
+  a task throws the same way.
+- **Runners no longer lock on their name**, so runners sharing a name no longer share one lock and
+  deadlock when one runs inside the other.
+- **A worker that failed to start is started by the next job** instead of leaving every later job
+  waiting for it.
+- **An interrupted caller or worker finishes the job before the interrupt surfaces**, instead of
+  leaving workers running into the next job.
+- **Workers no longer carry the `ExecutionContext` of the thread that started them.**
+
 ## 4.1.0-fuse.4
 
 ### Fixed

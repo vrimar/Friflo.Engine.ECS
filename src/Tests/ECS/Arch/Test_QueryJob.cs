@@ -386,6 +386,129 @@ public static class Test_QueryJob
     }
 
     [Test]
+    public static void Test_QueryJob_RunParallel_cycle_through_other_runner()
+    {
+        using var runner1   = new ParallelJobRunner(2);
+        using var runner2   = new ParallelJobRunner(2);
+        var store           = new EntityStore(PidType.UsePidAsId);
+        for (int n = 0; n < 64; n++) {
+            store.CreateEntity(new MyComponent1(), new MyComponent2());
+        }
+        var refused     = 0;
+        var innermost   = store.Query<MyComponent1>().ForEach((_, _) => { });
+        innermost.JobRunner = runner1;
+        innermost.MinParallelChunkLength = 1;
+        var inner       = store.Query<MyComponent2>().ForEach((_, _) => {
+            try {
+                innermost.RunParallel();
+            } catch (InvalidOperationException) {
+                Interlocked.Increment(ref refused);
+            }
+        });
+        inner.JobRunner = runner2;
+        inner.MinParallelChunkLength = 1;
+        var outer       = store.Query<MyComponent1>().ForEach((_, entities) => {
+            if (entities.TaskIndex == 1) {
+                inner.RunParallel();
+            }
+        });
+        outer.JobRunner = runner1;
+        outer.MinParallelChunkLength = 1;
+        
+        outer.RunParallel();
+        
+        Assert.AreEqual(2, refused);
+    }
+    
+    [Test]
+    public static void Test_QueryJob_RunParallel_nested_runners_sharing_a_name()
+    {
+        using var runner1   = new ParallelJobRunner(2, "Same");
+        using var runner2   = new ParallelJobRunner(2, "Same");
+        var store           = new EntityStore(PidType.UsePidAsId);
+        for (int n = 0; n < 64; n++) {
+            store.CreateEntity(new MyComponent1(), new MyComponent2());
+        }
+        var inner = store.Query<MyComponent2>().ForEach((component2, _) => {
+            foreach (ref var c in component2.Span) {
+                Interlocked.Increment(ref c.b);
+            }
+        });
+        inner.JobRunner = runner2;
+        inner.MinParallelChunkLength = 1;
+        var outer = store.Query<MyComponent1>().ForEach((_, entities) => {
+            if (entities.TaskIndex == 1) {
+                inner.RunParallel();
+            }
+        });
+        outer.JobRunner = runner1;
+        outer.MinParallelChunkLength = 1;
+        
+        outer.RunParallel();
+        
+        foreach (var entity in store.Entities) {
+            Assert.AreEqual(1, entity.GetComponent<MyComponent2>().b);
+        }
+    }
+    
+    [Test]
+    public static void Test_QueryJob_RunParallel_after_worker_interrupt()
+    {
+        using var runner    = new ParallelJobRunner(2);
+        var store           = new EntityStore(PidType.UsePidAsId) { JobRunner = runner };
+        for (int n = 0; n < 64; n++) {
+            store.CreateEntity().AddComponent<MyComponent1>();
+        }
+        var interrupt   = true;
+        var job         = store.Query<MyComponent1>().ForEach((component1, entities) => {
+            if (entities.TaskIndex == 1 && interrupt) {
+                interrupt = false;
+                Thread.CurrentThread.Interrupt();
+            }
+            foreach (ref var c in component1.Span) {
+                ++c.a;
+            }
+        });
+        job.MinParallelChunkLength = 1;
+        
+        job.RunParallel();
+        Thread.Sleep(50);
+        for (int n = 0; n < 10; n++) {
+            job.RunParallel();
+            Thread.Sleep(1);
+        }
+        
+        foreach (var entity in store.Entities) {
+            Assert.AreEqual(11, entity.GetComponent<MyComponent1>().a);
+        }
+    }
+    
+    private static readonly AsyncLocal<int> CallerContext = new AsyncLocal<int>();
+    
+    [Test]
+    public static void Test_QueryJob_RunParallel_workers_do_not_inherit_caller_context()
+    {
+        using var runner    = new ParallelJobRunner(2);
+        var store           = new EntityStore(PidType.UsePidAsId) { JobRunner = runner };
+        for (int n = 0; n < 64; n++) {
+            store.CreateEntity().AddComponent<MyComponent1>();
+        }
+        var seenByWorker = -1;
+        var job = store.Query<MyComponent1>().ForEach((_, entities) => {
+            if (entities.TaskIndex == 1) {
+                seenByWorker = CallerContext.Value;
+            }
+        });
+        job.MinParallelChunkLength = 1;
+        
+        CallerContext.Value = 42;
+        job.RunParallel();
+        CallerContext.Value = 0;
+        
+        Assert.AreEqual(0, seenByWorker);
+    }
+    
+    [Test]
     public static void Test_QueryJob_EntityStore_JobRunner()
     {
         using var jobRunner = new ParallelJobRunner(2, "MyRunner");
