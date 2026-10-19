@@ -16,6 +16,8 @@ fork's own compatibility line, not upstream's.
   while it queues and runs its sections; archetypes below `MinParallelChunkLength` still run
   `Sequential` on the caller first, outside that lock. Its task state is again allocated only once
   an archetype splits.
+- **`Dispose` from one of the runner's own tasks throws `InvalidOperationException`** instead of
+  waiting forever for the job that task belongs to.
 
 ## 4.1.0-fuse.3
 

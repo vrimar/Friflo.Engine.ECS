@@ -98,6 +98,10 @@ public sealed class ParallelJobRunner : IDisposable
     }
 
     public void Dispose() {
+        var stack = _tlsUsedRunnerStack;
+        if (stack != null && stack.Contains(this)) {
+            throw new InvalidOperationException($"'{name}' cannot be disposed by one of its own tasks");
+        }
         lock (name) {
             running     = false;
             foreach (var start in workerStarts) {
