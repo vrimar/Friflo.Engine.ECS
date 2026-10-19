@@ -331,7 +331,40 @@ public static class Test_QueryJob
             Assert.AreEqual(2, entity.GetComponent<MyComponent1>().a);
         }
     }
-
+    
+    [Test]
+    public static void Test_QueryJob_RunParallel_concurrent_callers()
+    {
+        var runs = 1000;
+        using var runner    = new ParallelJobRunner(4);
+        var store           = new EntityStore(PidType.UsePidAsId) { JobRunner = runner };
+        var archetypes      = new [] {
+            store.GetArchetype(ComponentTypes.Get<MyComponent1>()),
+            store.GetArchetype(ComponentTypes.Get<MyComponent1, MyComponent2>()),
+            store.GetArchetype(ComponentTypes.Get<MyComponent1, MyComponent3>()),
+            store.GetArchetype(ComponentTypes.Get<MyComponent1, MyComponent4>()),
+        };
+        foreach (var archetype in archetypes) {
+            for (int n = 0; n < 64; n++) {
+                archetype.CreateEntity();
+            }
+        }
+        var job = store.Query<MyComponent1>().ForEach((component1, entities) => {
+            foreach (ref var c in component1.Span) {
+                Interlocked.Increment(ref c.a);
+            }
+        });
+        job.MinParallelChunkLength = 1;
+        
+        Parallel.Invoke(
+            () => { for (int n = 0; n < runs; n++) job.RunParallel(); },
+            () => { for (int n = 0; n < runs; n++) job.RunParallel(); });
+        
+        foreach (var entity in store.Entities) {
+            Assert.AreEqual(2 * runs, entity.GetComponent<MyComponent1>().a);
+        }
+    }
+    
     [Test]
     public static void Test_QueryJob_EntityStore_JobRunner()
     {

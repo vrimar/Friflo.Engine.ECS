@@ -6,6 +6,17 @@ This project is a fork of [friflo/Friflo.Engine.ECS](https://github.com/friflo/F
 by Ullrich Praetz. Versions carry a `-fuse.N` suffix; the major version tracks this
 fork's own compatibility line, not upstream's.
 
+## 4.1.0-fuse.4
+
+### Fixed
+
+- **Concurrent `RunParallel` calls on one job no longer corrupt each other.** 4.1.0-fuse.3 queued
+  each task's sections on the job, so two threads running the same job - as nested jobs do - could
+  run or clear each other's sections, skipping or repeating entities. A job now holds its own lock
+  while it queues and runs its sections; archetypes below `MinParallelChunkLength` still run
+  `Sequential` on the caller first, outside that lock. Its task state is again allocated only once
+  an archetype splits.
+
 ## 4.1.0-fuse.3
 
 ### Changed
