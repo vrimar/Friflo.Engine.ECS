@@ -302,6 +302,68 @@ public static class Test_QueryJob
         Assert.AreEqual(threads * 1000, count1);
         Assert.AreEqual(threads * 1000, count2);
     }
+
+    [Test]
+    public static void Test_QueryJob_RunParallel_two_archetypes()
+    {
+        var threads = 4;
+        using var runner    = new ParallelJobRunner(threads);
+        var store           = new EntityStore(PidType.UsePidAsId) { JobRunner = runner };
+        var single          = store.GetArchetype(ComponentTypes.Get<MyComponent1>());
+        var pair            = store.GetArchetype(ComponentTypes.Get<MyComponent1, MyComponent2>());
+        for (int n = 0; n < 64; n++) {
+            single.CreateEntity();
+            pair.CreateEntity();
+        }
+        var calls   = 0;
+        var job     = store.Query<MyComponent1>().ForEach((component1, entities) => {
+            Interlocked.Increment(ref calls);
+            foreach (ref var c in component1.Span) {
+                ++c.a;
+            }
+        });
+        job.MinParallelChunkLength = 1;
+        job.RunParallel();
+        job.RunParallel();
+
+        Assert.AreEqual(threads * 2 * 2, calls);
+        foreach (var entity in store.Entities) {
+            Assert.AreEqual(2, entity.GetComponent<MyComponent1>().a);
+        }
+    }
+    
+    [Test]
+    public static void Test_QueryJob_RunParallel_concurrent_callers()
+    {
+        var runs = 1000;
+        using var runner    = new ParallelJobRunner(4);
+        var store           = new EntityStore(PidType.UsePidAsId) { JobRunner = runner };
+        var archetypes      = new [] {
+            store.GetArchetype(ComponentTypes.Get<MyComponent1>()),
+            store.GetArchetype(ComponentTypes.Get<MyComponent1, MyComponent2>()),
+            store.GetArchetype(ComponentTypes.Get<MyComponent1, MyComponent3>()),
+            store.GetArchetype(ComponentTypes.Get<MyComponent1, MyComponent4>()),
+        };
+        foreach (var archetype in archetypes) {
+            for (int n = 0; n < 64; n++) {
+                archetype.CreateEntity();
+            }
+        }
+        var job = store.Query<MyComponent1>().ForEach((component1, entities) => {
+            foreach (ref var c in component1.Span) {
+                Interlocked.Increment(ref c.a);
+            }
+        });
+        job.MinParallelChunkLength = 1;
+        
+        Parallel.Invoke(
+            () => { for (int n = 0; n < runs; n++) job.RunParallel(); },
+            () => { for (int n = 0; n < runs; n++) job.RunParallel(); });
+        
+        foreach (var entity in store.Entities) {
+            Assert.AreEqual(2 * runs, entity.GetComponent<MyComponent1>().a);
+        }
+    }
     
     [Test]
     public static void Test_QueryJob_Dispose_from_own_task()
@@ -321,6 +383,35 @@ public static class Test_QueryJob
         var e = Assert.Throws<AggregateException>(job.RunParallel)!;
         Assert.IsInstanceOf<InvalidOperationException>(e.InnerExceptions[0]);
         Assert.IsFalse(runner.IsDisposed);
+    }
+
+    [Test]
+    public static void Test_QueryJob_RunParallel_own_job_from_task()
+    {
+        using var runner    = new ParallelJobRunner(2);
+        var store           = new EntityStore(PidType.UsePidAsId) { JobRunner = runner };
+        for (int n = 0; n < 64; n++) {
+            store.CreateEntity().AddComponent<MyComponent1>();
+        }
+        QueryJob job    = null;
+        var refused     = 0;
+        job = store.Query<MyComponent1>().ForEach((component1, entities) => {
+            try {
+                job!.RunParallel();
+            } catch (InvalidOperationException) {
+                Interlocked.Increment(ref refused);
+            }
+            foreach (ref var c in component1.Span) {
+                ++c.a;
+            }
+        });
+        job.MinParallelChunkLength = 1;
+        job.RunParallel();
+        
+        Assert.AreEqual(2, refused);
+        foreach (var entity in store.Entities) {
+            Assert.AreEqual(1, entity.GetComponent<MyComponent1>().a);
+        }
     }
     
     [Test]
@@ -387,6 +478,26 @@ public static class Test_QueryJob
         foreach (var entity in store.Entities) {
             Assert.AreEqual(1, entity.GetComponent<MyComponent2>().b);
         }
+    }
+    
+    
+    [Test]
+    public static void Test_QueryJob_RunParallel_refuses_structural_change_in_task()
+    {
+        using var runner    = new ParallelJobRunner(2);
+        var store           = new EntityStore(PidType.UsePidAsId) { JobRunner = runner };
+        for (int n = 0; n < 64; n++) {
+            store.CreateEntity().AddComponent<MyComponent1>();
+        }
+        var job = store.Query<MyComponent1>().ForEach((_, entities) => {
+            if (entities.TaskIndex == 1) {
+                entities.EntityAt(0).AddTag<TestTag>();
+            }
+        });
+        job.MinParallelChunkLength = 1;
+        
+        var e = Assert.Throws<AggregateException>(job.RunParallel)!;
+        Assert.IsInstanceOf<StructuralChangeException>(e.InnerExceptions[0]);
     }
     
     [Test]

@@ -46,6 +46,8 @@ public abstract class QueryJob
 #region internal fields
     [Browse(Never)] internal    ParallelJobRunner   jobRunner;          //  4
     [Browse(Never)] private     int                 minParallel = 1000; //  4
+    // Concurrent RunParallel calls on one job share its tasks; the runner's own lock comes too late.
+    [Browse(Never)] internal readonly object        jobTasksLock = new();
     #endregion
     
     /// <summary>

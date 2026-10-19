@@ -15,6 +15,8 @@ known bugs, including hangs, and this version removes it: do not use those two v
 
 - **`ParallelJobRunner` accepts 1 to 256 threads** and throws `ArgumentOutOfRangeException` otherwise,
   since `ChunkEntities.TaskIndex` is a byte.
+- **`RunParallel` on a disposed runner throws `ObjectDisposedException`** even when no archetype
+  splits.
 
 ### Fixed
 
@@ -31,6 +33,10 @@ known bugs, including hangs, and this version removes it: do not use those two v
   a task throws the same way.
 - **Runners no longer lock on their name**, so runners sharing a name no longer share one lock and
   deadlock when one runs inside the other.
+- **Concurrent `RunParallel` calls on one job no longer corrupt each other**: they shared the job's
+  tasks, so one call could run another's chunks.
+- **`RunParallel` reads its runner once**, so changing `JobRunner` during a run no longer drops or
+  misroutes tasks.
 - **A worker that failed to start is started by the next job** instead of leaving every later job
   waiting for it.
 - **An interrupted caller or worker finishes the job before the interrupt surfaces**, instead of

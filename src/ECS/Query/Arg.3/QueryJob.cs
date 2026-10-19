@@ -60,8 +60,11 @@ where T3 : struct
     /// </summary>
     public override void RunParallel()
     {
-        if (jobRunner == null) throw JobRunnerIsNullException();
-        var taskCount   = jobRunner.workerCount + 1;
+        var runner      = jobRunner;
+        if (runner == null) throw JobRunnerIsNullException();
+        // Before any lock a running job holds: a task of that job blocked on it would deadlock the job.
+        runner.ThrowIfUnusable();
+        var taskCount   = runner.workerCount + 1;
         
         foreach (Chunks<T1,T2,T3> chunks in query.Chunks)
         {
@@ -70,29 +73,32 @@ where T3 : struct
                 action(chunks.Chunk1, chunks.Chunk2, chunks.Chunk3, chunks.Entities);
                 continue;
             }
-            var tasks = jobTasks;
-            if (tasks == null || tasks.Length < taskCount) {
-                tasks = jobTasks = new QueryJobTask[taskCount];
-                for (int n = 0; n < taskCount; n++) {
-                    tasks[n] = new QueryJobTask { action = action };
-                }
-            }
-            var sectionSize = GetSectionSize(chunkLength, taskCount, Multiple);
-            var start       = 0;
-            for (int taskIndex = 0; taskIndex < taskCount; taskIndex++)
+            lock (jobTasksLock)
             {
-                var length = GetSectionLength (chunkLength, start, sectionSize);
-                if (length > 0) {
-                    tasks[taskIndex].chunks = new Chunks<T1,T2,T3>(chunks, start, length, taskIndex);
-                    start += sectionSize;
-                    continue;
+                var tasks = jobTasks;
+                if (tasks == null || tasks.Length < taskCount) {
+                    tasks = jobTasks = new QueryJobTask[taskCount];
+                    for (int n = 0; n < taskCount; n++) {
+                        tasks[n] = new QueryJobTask { action = action };
+                    }
                 }
-                for (; taskIndex < taskCount; taskIndex++) {
-                    tasks[taskIndex].chunks = new Chunks<T1,T2,T3>(chunks.Entities, taskIndex);
+                var sectionSize = GetSectionSize(chunkLength, taskCount, Multiple);
+                var start       = 0;
+                for (int taskIndex = 0; taskIndex < taskCount; taskIndex++)
+                {
+                    var length = GetSectionLength (chunkLength, start, sectionSize);
+                    if (length > 0) {
+                        tasks[taskIndex].chunks = new Chunks<T1,T2,T3>(chunks, start, length, taskIndex);
+                        start += sectionSize;
+                        continue;
+                    }
+                    for (; taskIndex < taskCount; taskIndex++) {
+                        tasks[taskIndex].chunks = new Chunks<T1,T2,T3>(chunks.Entities, taskIndex);
+                    }
+                    break;
                 }
-                break;
+                runner.ExecuteJob(this, tasks);
             }
-            jobRunner.ExecuteJob(this, tasks);
         }
     }
     
