@@ -302,7 +302,36 @@ public static class Test_QueryJob
         Assert.AreEqual(threads * 1000, count1);
         Assert.AreEqual(threads * 1000, count2);
     }
-    
+
+    [Test]
+    public static void Test_QueryJob_RunParallel_two_archetypes()
+    {
+        var threads = 4;
+        using var runner    = new ParallelJobRunner(threads);
+        var store           = new EntityStore(PidType.UsePidAsId) { JobRunner = runner };
+        var single          = store.GetArchetype(ComponentTypes.Get<MyComponent1>());
+        var pair            = store.GetArchetype(ComponentTypes.Get<MyComponent1, MyComponent2>());
+        for (int n = 0; n < 64; n++) {
+            single.CreateEntity();
+            pair.CreateEntity();
+        }
+        var calls   = 0;
+        var job     = store.Query<MyComponent1>().ForEach((component1, entities) => {
+            Interlocked.Increment(ref calls);
+            foreach (ref var c in component1.Span) {
+                ++c.a;
+            }
+        });
+        job.MinParallelChunkLength = 1;
+        job.RunParallel();
+        job.RunParallel();
+
+        Assert.AreEqual(threads * 2 * 2, calls);
+        foreach (var entity in store.Entities) {
+            Assert.AreEqual(2, entity.GetComponent<MyComponent1>().a);
+        }
+    }
+
     [Test]
     public static void Test_QueryJob_EntityStore_JobRunner()
     {

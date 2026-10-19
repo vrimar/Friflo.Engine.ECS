@@ -8,6 +8,14 @@ fork's own compatibility line, not upstream's.
 
 ## 4.1.0-fuse.3
 
+### Changed
+
+- **`RunParallel` runs one job per query, not one per archetype.** The sections of every archetype
+  large enough to split go to the workers together, so a query synchronizes the workers once. Each
+  task is still called once per such archetype, with an empty chunk where it has no section.
+  Archetypes below `MinParallelChunkLength` still run `Sequential` on the caller, now before the
+  parallel ones rather than interleaved with them.
+
 ### Fixed
 
 - **An idle `ParallelJobRunner` worker parks instead of spinning.** A worker that finished its task

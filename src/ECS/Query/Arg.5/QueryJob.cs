@@ -34,9 +34,27 @@ where T5 : struct
 
     private class QueryJobTask : JobTask {
         internal    Action<Chunk<T1>, Chunk<T2>, Chunk<T3>, Chunk<T4>, Chunk<T5>, ChunkEntities>     action;
-        internal    Chunks<T1,T2,T3,T4,T5>                                  chunks;
+        internal    Chunks<T1,T2,T3,T4,T5>[]                                                         sections = new Chunks<T1,T2,T3,T4,T5>[1];
+        internal    int                                                                              sectionCount;
         
-        internal  override void ExecuteTask()  => action(chunks.Chunk1, chunks.Chunk2, chunks.Chunk3, chunks.Chunk4, chunks.Chunk5, chunks.Entities);
+        internal  override void ExecuteTask() {
+            for (int n = 0; n < sectionCount; n++) {
+                ref readonly var chunks = ref sections[n];
+                action(chunks.Chunk1, chunks.Chunk2, chunks.Chunk3, chunks.Chunk4, chunks.Chunk5, chunks.Entities);
+            }
+        }
+        
+        internal void AddSection(in Chunks<T1,T2,T3,T4,T5> chunks) {
+            if (sectionCount == sections.Length) {
+                Array.Resize(ref sections, 2 * sectionCount);
+            }
+            sections[sectionCount++] = chunks;
+        }
+        
+        internal void ClearSections() {
+            Array.Clear(sections, 0, sectionCount);
+            sectionCount = 0;
+        }
     }
     
     internal QueryJob(
@@ -64,37 +82,46 @@ where T5 : struct
     {
         if (jobRunner == null) throw JobRunnerIsNullException();
         var taskCount   = jobRunner.workerCount + 1;
-        
-        foreach (Chunks<T1,T2,T3,T4,T5> chunks in query.Chunks)
-        {
-            var chunkLength = chunks.Length;
-            if (ExecuteSequential(taskCount, chunkLength)) {
-                action(chunks.Chunk1, chunks.Chunk2, chunks.Chunk3, chunks.Chunk4, chunks.Chunk5, chunks.Entities);
-                continue;
+        var tasks       = jobTasks;
+        if (tasks == null || tasks.Length < taskCount) {
+            tasks = jobTasks = new QueryJobTask[taskCount];
+            for (int n = 0; n < taskCount; n++) {
+                tasks[n] = new QueryJobTask { action = action };
             }
-            var tasks = jobTasks;
-            if (tasks == null || tasks.Length < taskCount) {
-                tasks = jobTasks = new QueryJobTask[taskCount];
-                for (int n = 0; n < taskCount; n++) {
-                    tasks[n] = new QueryJobTask { action = action };
-                }
-            }
-            var sectionSize = GetSectionSize(chunkLength, taskCount, Multiple);
-            var start       = 0;
-            for (int taskIndex = 0; taskIndex < taskCount; taskIndex++)
+        }
+        try {
+            var parallel = false;
+            foreach (Chunks<T1,T2,T3,T4,T5> chunks in query.Chunks)
             {
-                var length = GetSectionLength (chunkLength, start, sectionSize);
-                if (length > 0) {
-                    tasks[taskIndex].chunks = new Chunks<T1,T2,T3,T4,T5>(chunks, start, length, taskIndex);
-                    start += sectionSize;
+                var chunkLength = chunks.Length;
+                if (ExecuteSequential(taskCount, chunkLength)) {
+                    action(chunks.Chunk1, chunks.Chunk2, chunks.Chunk3, chunks.Chunk4, chunks.Chunk5, chunks.Entities);
                     continue;
                 }
-                for (; taskIndex < taskCount; taskIndex++) {
-                    tasks[taskIndex].chunks = new Chunks<T1,T2,T3,T4,T5>(chunks.Entities, taskIndex);
+                parallel        = true;
+                var sectionSize = GetSectionSize(chunkLength, taskCount, Multiple);
+                var start       = 0;
+                for (int taskIndex = 0; taskIndex < taskCount; taskIndex++)
+                {
+                    var length = GetSectionLength (chunkLength, start, sectionSize);
+                    if (length > 0) {
+                        tasks[taskIndex].AddSection(new Chunks<T1,T2,T3,T4,T5>(chunks, start, length, taskIndex));
+                        start += sectionSize;
+                        continue;
+                    }
+                    for (; taskIndex < taskCount; taskIndex++) {
+                        tasks[taskIndex].AddSection(new Chunks<T1,T2,T3,T4,T5>(chunks.Entities, taskIndex));
+                    }
+                    break;
                 }
-                break;
             }
-            jobRunner.ExecuteJob(this, tasks);
+            if (parallel) {
+                jobRunner.ExecuteJob(this, tasks);
+            }
+        } finally {
+            for (int n = 0; n < taskCount; n++) {
+                tasks[n].ClearSections();
+            }
         }
     }
     
