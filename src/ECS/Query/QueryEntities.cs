@@ -4,6 +4,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using static System.Diagnostics.DebuggerBrowsableState;
@@ -111,7 +112,7 @@ public struct EntitiesEnumerator : IEnumerator<Entity>
         archetypePos    = -1;
         checkChange     = query.checkChange;
         if (checkChange) {
-            store.internBase.activeQueryLoops++;
+            Interlocked.Increment(ref store.internBase.activeQueryLoops);
         }
     }
     
@@ -164,7 +165,7 @@ public struct EntitiesEnumerator : IEnumerator<Entity>
     // --- IDisposable
     public void Dispose() {
         if (checkChange) {
-            store.internBase.activeQueryLoops--;
+            Interlocked.Decrement(ref store.internBase.activeQueryLoops);
         }
     }
 }

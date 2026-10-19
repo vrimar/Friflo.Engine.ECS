@@ -30,6 +30,8 @@ fork's own compatibility line, not upstream's.
   misroutes tasks.
 - **A parallel section of a value-condition or relation query starts at its chunk's entity**, not at
   the archetype's first.
+- **The structural-change guard counts query loops atomically**, so concurrent queries no longer
+  leave it stuck on or off.
 - **A worker that failed to start is started by the next job** instead of leaving every later job
   waiting for it.
 - **An interrupted caller or worker finishes the job before the interrupt surfaces**, instead of
