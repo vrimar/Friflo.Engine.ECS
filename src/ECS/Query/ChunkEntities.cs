@@ -68,7 +68,7 @@ public readonly struct ChunkEntities : IEnumerable<Entity>
         Execution   = JobExecution.Parallel;
         TaskIndex   = (byte)taskIndex;
         entityIds   = entities.entityIds;
-        Start       = start;
+        Start       = entities.Start + start;
         Length      = componentLen;
     }
     

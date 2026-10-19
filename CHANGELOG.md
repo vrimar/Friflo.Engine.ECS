@@ -28,6 +28,8 @@ fork's own compatibility line, not upstream's.
   deadlock when one runs inside the other.
 - **`RunParallel` reads its runner once**, so changing `JobRunner` during a run no longer drops or
   misroutes tasks.
+- **A parallel section of a value-condition or relation query starts at its chunk's entity**, not at
+  the archetype's first.
 - **A worker that failed to start is started by the next job** instead of leaving every later job
   waiting for it.
 - **An interrupted caller or worker finishes the job before the interrupt surfaces**, instead of
