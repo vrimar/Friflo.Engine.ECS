@@ -61,7 +61,8 @@ public abstract class QueryJob
     /// </summary>
     /// <remarks>
     /// Requires an <see cref="ParallelJobRunner"/>.<br/>
-    /// A runner can be assigned to <see cref="JobRunner"/> or to the <see cref="EntityStore"/>.
+    /// A runner can be assigned to <see cref="JobRunner"/> or to the <see cref="EntityStore"/>.<br/>
+    /// A query with value conditions or relations must not run on several threads at once.
     /// </remarks>
     /// <exception cref="InvalidOperationException">
     ///     If the <see cref="JobRunner"/> is not set.
